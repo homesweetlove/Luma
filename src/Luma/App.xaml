@@ -1,0 +1,16 @@
+<Application
+    x:Class="Luma.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <SolidColorBrush x:Key="LumaPanelBrush" Color="#F7F7F8" />
+            <SolidColorBrush x:Key="LumaBorderBrush" Color="#18000000" />
+            <SolidColorBrush x:Key="LumaAccentBrush" Color="#2563EB" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
