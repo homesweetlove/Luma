@@ -1,0 +1,45 @@
+# Build output
+bin/
+obj/
+artifacts/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / JetBrains
+.idea/
+*.sln.iml
+
+# Windows / app-local data
+*.db
+*.db-shm
+*.db-wal
+LumaData/
+LocalState/
+
+# Secrets and local provider configuration
+.env
+.env.*
+!.env.example
+secrets.json
+providers.local.json
+vault.local.json
+
+# Logs
+*.log
+logs/
+
+# Packages / publish
+packages/
+publish/
+AppPackages/
+BundleArtifacts/
+
+# OS junk
+Thumbs.db
+Desktop.ini
+.DS_Store
