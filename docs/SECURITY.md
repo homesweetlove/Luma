@@ -1,172 +1,103 @@
-# Security & Privacy Model
+# Security and Privacy / 보안과 개인정보
 
-Luma is a private, personal browser, but private use does not justify weak secret handling. The default architecture assumes the browser may eventually hold account sessions, addresses, payment metadata, provider credentials, and automation permissions.
+Luma is intended for private/personal use on Windows. Its native host handles browser sessions and vault data while websites and external AI text remain untrusted. This document describes implemented safeguards and their limits; it is not a security certification.
 
-## Core rule
+Luma는 Windows 개인용 앱입니다. 네이티브 호스트가 세션과 Vault를 관리하고 웹 페이지와 외부 AI 텍스트는 신뢰하지 않습니다. 아래 보호 기능은 보안 인증이나 모든 사이트에 대한 안전 보장이 아닙니다.
 
-**The model should not need to know a secret in order to use a secret.**
+## WebView2 boundary / 웹 콘텐츠 경계
 
-Instead of placing a password or card number in a prompt, the agent should request a capability:
+Microsoft recommends origin checks around script execution and messages, validation of data from web content, narrow host interactions, and avoiding unnecessary host-object access. Luma disables host objects and does not expose a general native tool dispatcher to a page. JavaScript and recording messages remain enabled because the browser/recorder need them. DevTools remains enabled; this is a personal development app. [Microsoft WebView2 security guidance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/security).
 
-```text
-vault.fillLogin(account="naver-main")
-vault.fillAddress(address="home")
-vault.fillPayment(card="personal-visa")
-```
+The recorder bridge installed on document creation is not privileged authorization. Native code checks the recording tab, current message source, and foreground state; MacroService validates the message schema and bounds. Page content can still be misleading. Snapshot labels, selectors, and replies must be treated as data rather than instructions.
 
-A trusted local component performs the actual fill operation.
+Run the app as an ordinary Windows user. Keep WebView2 Evergreen updated. Host checks reduce exposure but cannot protect an already compromised Windows account or make a malicious matching website trustworthy.
 
-## Storage classes
+Microsoft 지침처럼 origin과 메시지를 검사하고 임의 네이티브 도구 호출을 노출하지 않습니다. 브리지 메시지는 녹화 탭·출처·형식·제한을 검사하지만 페이지에서 온 값 자체는 신뢰하지 않습니다. 관리자 권한 없이 실행하고 Evergreen을 갱신하세요.
 
-| Data | Planned storage | Model visibility |
-|---|---|---|
-| Browser cookies/session | WebView2 local profile | No direct export by default |
-| Password | DPAPI-protected vault | Never raw |
-| Address | DPAPI-protected vault | Field-level release only |
-| Card number | DPAPI-protected payment vault | Never raw |
-| Card expiry | Protected payment metadata | Only when fill is approved |
-| CVC/CVV | **Not persisted** | Never |
-| OTP/2FA | Not persisted | Human input/handoff |
-| API keys | DPAPI-protected provider vault | Provider adapter only |
-| Macro definitions | Local files/SQLite | Allowed, but no secret values |
-| Audit history | SQLite | Sanitized only |
+## Data classes / 데이터별 보호
 
-## DPAPI boundary
+| Data | Current location/protection | Limits |
+| --- | --- | --- |
+| Browser sessions | Persistent WebView2 profile | Not an app-managed encrypted vault or separate identity per tab |
+| Typed login/address/payment metadata | DPAPI CurrentUser records in `Vault/Typed-v1` | Windows-account boundary, not a separate master-password/Hello lock |
+| Login password | DPAPI record or optional Windows Credential Manager | Resolved only for the local fill path; not a display/list-model property |
+| Payment metadata | Brand, last four, holder, expiry only | No PAN, security code, PIN, or arbitrary payment-field bag |
+| Macro JSON | Explicit local export | Plaintext; can contain ordinary input data and sensitive URLs |
+| Audit DB | SQLite `luma.db` | Not encrypted; origins and action metadata can identify browsing behavior |
+| Delegate prompt | Native review, explicit clipboard copy | External provider/clipboard privacy applies after user disclosure |
 
-The first implementation uses Windows DPAPI with `CurrentUser` scope. Encrypted blobs are therefore bound to the current Windows user context.
+DPAPI protects typed records for the current Windows user. Credential Manager optionally stores only the login secret; metadata stays in DPAPI records. The broker uses a profile-specific Luma target namespace. Byte buffers are cleared where implemented, but passwords also exist temporarily as managed strings and in the destination page. Do not claim guaranteed memory erasure or protection against software running as the same user.
 
-This is appropriate for the first personal-only Windows build because:
+Unknown typed-record properties, invalid IDs/types/metadata, malformed records, and oversized records are rejected. Payment labels and holder names reject recognizable full-card-number and security-code content, including normalized full-width characters. Free-text validation is not a universal secret detector; never enter secrets into labels/address fields.
 
-- no master password has to be stored by Luma,
-- decryption is tied to the Windows account,
-- encrypted files copied to another ordinary account are not directly useful,
-- implementation is significantly lighter than embedding a full password-manager stack.
+DPAPI는 현재 Windows 사용자 기준으로 보호합니다. 자격 증명 관리자는 선택적 로그인 비밀 저장소이며 메타데이터는 계속 DPAPI로 보호합니다. 같은 계정의 악성 프로그램이나 일시적인 메모리/페이지 노출을 막는 별도 보안 경계가 아닙니다. 결제 슬롯에는 카드번호·보안 코드·PIN을 저장하지 않습니다.
 
-Future hardening can add Windows Hello consent for selected vault categories.
+## Vault fill / Vault 채우기
 
-## Macro recorder safety
+A fill requires a native user action and a ready selected tab in the actual OS foreground window. The service validates HTTPS scheme, normalized host and port, full document URL, and a single-use document token. A subdomain, HTTP page, or different port is not the same origin. Native checks and in-document checks are repeated before values are written.
 
-The injected recorder excludes values from fields matching password/payment/OTP patterns.
+The fill stops recording before resolving the secret and does not restart recording. It is confined to the top-level document, with exact single-token autocomplete allowlists:
 
-A macro can remember that a secure fill happened, but should store only a vault reference:
+| Slot | Allowed tokens |
+| --- | --- |
+| Login | `username`, `current-password` |
+| Address | `name`, `address-line1`, `address-line2`, `address-level2`, `address-level1`, `postal-code`, `country`, `email`, `tel` |
+| Payment metadata | `cc-name`, `cc-exp-month`, `cc-exp-year` |
 
-```json
-{
-  "kind": "vault-fill",
-  "slot": "payment/personal-visa"
-}
-```
+The service refuses ambiguous/unsafe matching fields, hidden or disabled controls, sensitive/conflicting field hints, and document changes. Compound tokens such as `billing cc-name` are unsupported. Login fields require a same-origin HTTPS POST form; where a form is present for other supported fields, its action/method is checked too. Brand/last-four are display metadata and are not sent to a field.
 
-not:
+Fill sets eligible values without clicking, submitting, or dispatching input/change events. Controlled forms may require manual interaction. Once filled, the destination page can read those values. Allowlisting the origin is a routing constraint, not proof that the site's scripts are safe.
 
-```json
-{
-  "kind": "input",
-  "value": "4111 1111 1111 1111"
-}
-```
+The typed vault does not load, migrate, or delete legacy untyped `Vault/*.bin` files. The existing browser profile and audit database remain in place. Old files may retain previous data; review them separately. There is no automatic migration, cloud sync, vault export, or Windows Hello approval implemented.
 
-## AI prompt boundary
+채우기는 사용자의 네이티브 동작, 실제 전경 창, 선택 탭, 정확한 HTTPS origin과 문서 URL/token을 검사합니다. 녹화는 중지하고 다시 시작하지 않습니다. 단일 autocomplete 허용 목록만 사용하며 제출·클릭·change 이벤트를 발생시키지 않습니다. 채운 값은 해당 사이트 스크립트가 읽을 수 있습니다. 이전 `Vault/*.bin`은 읽기·변환·삭제하지 않으며 기존 프로필과 감사 DB도 유지합니다.
 
-Before sending context to an external provider or visible delegate, the future context builder should:
+## Macros and click approval / 매크로와 클릭 승인
 
-1. use DOM/accessibility text before screenshots,
-2. redact input values marked sensitive,
-3. remove cookies, authorization headers and tokens,
-4. replace vault references with non-secret labels,
-5. limit context to the active task,
-6. log which provider received which non-secret context category.
+The whole program is validated before effects. Unknown steps and arbitrary script/shell kinds are not accepted. Defaults bound replay to 120 seconds, 1,000 operations, and 16 nesting levels, with per-step limits detailed in [Architecture](ARCHITECTURE.md#macro-programs).
 
-## Approval boundary
+Current recording captures clicks/navigation. Input recording is disabled unless a host explicitly supplies `InputCaptureValidator`; Main does not. Imported input is separately supported and live sensitivity/uniqueness/readiness checks apply. Manually pasted JSON values are not automatically scrubbed of every possible secret.
 
-Observation and commitment are separate.
+Each macro click requires a native confirmation. The observed source URL and document identity bind approval to that document; runtime and effect scripts recheck them after approval. A navigation/reload requires a fresh attempt rather than transferring consent. Watch clicks similarly bind the approved target to its observed source/document tokens and revalidate before dispatch.
 
-High-impact actions should have an approval checkpoint available even if a personal policy later disables it for trusted cases.
+Foreground enforcement checks the OS window handle, selected target, and loading state. Macro gate denial stops replay; watch checks pause. Retry only repeats pre-effect readiness. Explicit loops can repeat effects. Cancellation and timeout cannot retract a WebView2 script already dispatched, so uncertain effects are not automatically retried.
 
-Examples:
+The approval-policy enum includes purchases, reservations, mail, calendar, shell, and Git publication, but these integrations are absent. It is not evidence of comprehensive transaction detection. Review every click and navigate/input destination in a macro.
 
-- booking confirmation,
-- payment,
-- sending a message,
-- destructive changes,
-- shell execution,
-- publishing code.
+매크로는 전체 검증 후 실행하며 임의 script/shell 단계가 없습니다. 기본 제한은 120초·1,000작업·16중첩입니다. 클릭 승인은 관찰된 URL/문서 token에 연결하고 실행 직전 다시 검사합니다. 감시 클릭도 승인된 문서/대상에 연결합니다. 취소는 이미 전송한 효과를 되돌리지 못하며 retry는 준비 상태만 재시도합니다.
 
-## Authentication challenges
+## Watch scope and authentication / 감시와 인증
 
-Luma must not attempt to bypass:
+Immediate watch is limited to 30 minutes. Scheduled watch requires full ISO timestamps with offset or `Z`, a future end, ordered endpoints, and a maximum 24-hour interval. It stays on the original tab/origin. Auto-click still asks for **Click once**; optional replay requires a successful approved click. It is not an unattended booking service and does not wake the PC.
 
-- CAPTCHA,
-- passkeys,
-- SMS OTP,
-- card issuer challenge flows,
-- biometric authentication,
-- device approval.
+Exact, case-sensitive text after whitespace normalization must match one eligible unobstructed control. There is no cross-origin iframe, shadow-root, or canvas automation bypass. CAPTCHA, passkeys, OTP, banking/card confirmation, and other authentication remain human tasks. There is no automatic challenge solver or guaranteed challenge/resume state machine.
 
-The intended behavior is:
+감시는 원래 탭/origin과 시간 범위에 한정됩니다. Auto-click 옵션도 수동 승인이 필요하고 예약 서비스를 무인으로 수행하지 않습니다. CAPTCHA·passkey·OTP·결제 인증은 사람이 처리하며 iframe·shadow DOM·canvas를 우회하지 않습니다.
 
-```text
-agent works → authentication challenge appears → user completes challenge → agent resumes
-```
+## External AI and clipboard / 외부 AI와 클립보드
 
-## Payment design
+The actual flow is native task entry → Prepare → review filtered task → Open visible tab → explicit Copy task → manual paste/send. No DOM snapshot, browser cookies, vault content, or automatic page context is attached.
 
-The browser may eventually automate form filling and checkout navigation. The model should see only metadata such as:
+Prompt preparation limits tasks to 8,000 characters and rejects recognizable credential assignments. It processes HTTP(S) URLs case-insensitively, rejects URLs containing user information **before email redaction**, removes query/fragment components, and redacts emails and long numeric sequences. These heuristics cannot detect every secret or personal fact; review the final prompt.
 
-```text
-Personal Visa •••• 1234
-```
+Only the explicit Copy task choice writes the reviewed prompt to the clipboard. Clipboard history, sync, and other apps may retain it. Luma does not automatically clear the clipboard or control provider retention.
 
-The secure fill layer handles the real PAN locally.
+Read selected reply imports at most 16,000 selected characters from the last opened delegate's selected foreground tab at its exact origin. It does not verify authorship or that the selection is an assistant reply. It displays untrusted text without executing tools, altering macros, or transferring approval.
 
-CVV/CVC remains manual by design.
+The composer helper exists but Main does not automatically invoke it; it does not send a message. Provider APIs/local models are not implemented. The interface alone does not authorize sharing context.
 
-## Audit requirements
+작업 입력→Prepare→검토→보이는 탭→명시적 Copy task→사용자 붙여넣기/전송 순서입니다. URL은 대소문자 구분 없이 처리하고 이메일 가리기 전에 userinfo 포함 URL을 거절합니다. 답변은 선택한 최대 16,000자를 비신뢰 텍스트로 표시할 뿐 도구나 매크로를 실행하지 않습니다. 클립보드와 외부 공급자의 보존 정책은 별도입니다.
 
-Audit logs may contain:
+## Audit, tests, and remaining limits / 감사·검증·한계
 
-- action name,
-- site/domain,
-- timestamp,
-- macro/tool name,
-- approval result,
-- non-sensitive status.
+Current audit call sites record origins, provider names, action outcomes, and counts rather than passwords, full card numbers, cookies, or full task/reply bodies. The SQLite database is not a complete approval ledger or a security-monitoring product. Plaintext macro URLs and browser profile history may contain sensitive data even when audit targets are reduced to origins.
 
-Audit logs must not contain:
+The integration run reports a zero-warning Release build and passing console suites. The final tests include 15 macro-runtime scenarios, 17 generated vault JavaScript cases, and 35 watch production-script cases. Generated vault scripts are emitted by VaultTests when `LUMA_VAULT_TEST_SCRIPT_DIRECTORY` is set; Node 22 runs the script regressions. See [README verification](../README.md#verification).
 
-- passwords,
-- full card numbers,
-- CVC/CVV,
-- OTP,
-- session cookies,
-- bearer tokens,
-- provider API keys,
-- full sensitive form payloads.
+Those tests and the launch/sidebar/Google/snapshot/Ctrl+T smoke do not establish complete vendor handoffs, reservation compatibility, adversarial isolation, or hardware resource limits. Native capture showed a blank WebView surface with available DOM/accessibility; its possible composition-capture cause is unconfirmed.
 
-## External AI delegates
+For resource work, Microsoft describes Evergreen updates, shared environments, lifecycle management, and measuring startup/memory/CPU rather than assuming low cost from native UI. Luma shares its environment and requests inactive-tab suspension/low memory targets. The i5 13th-generation/8 GB target has no hardware benchmarks yet. [Microsoft WebView2 performance guidance](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/performance).
 
-Visible delegates such as a Gemini or Claude web tab are treated as untrusted external processors for secret-handling purposes.
+No always-on model, resident coding workspace, hidden background scheduler, or image-per-step model loop is implemented. Outstanding work is listed in [Roadmap](ROADMAP.md), including real-site validation, runtime resource measurement, capture investigation, and explicit legacy-data migration.
 
-They can receive:
-
-- sanitized screenshots,
-- selected source code,
-- public page context,
-- problem descriptions.
-
-They must not receive raw vault material.
-
-## Threats explicitly considered
-
-- accidental secret leakage into prompts,
-- accidental secret capture by macro recording,
-- plaintext logs,
-- local database inspection,
-- an agent making an irreversible action without approval,
-- automation continuing while the user thinks it is paused,
-- stale selectors clicking the wrong target,
-- copied vault files being inspected outside the Windows user account.
-
-## Private repository note
-
-The repository is private and intended for one user. This reduces distribution risk but does not change the storage model: code should be written as if the local profile can hold real credentials.
+최종 검증에는 매크로 런타임 15개, Vault 생성 JS 17개, 감시 production-script 35개 사례가 포함됩니다. 콘솔/모의 DOM 검증과 제한된 화면 스모크는 공급자·예약 사이트 전체 동작이나 보안 인증을 뜻하지 않습니다. 하드웨어 벤치마크와 캡처 원인 확인은 남은 작업입니다.

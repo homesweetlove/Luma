@@ -1,812 +1,189 @@
-<div align="center">
-
 # Luma
 
-### A lightweight, local-first AI agent browser for Windows
+**A private Windows browser with local automation and visible AI handoffs.**
 
-**Safari-inspired UI · WebView2 · semantic macros · foreground watch · local vault · free-first agent routing**
+[한국어](README.ko.md) · [Architecture](docs/ARCHITECTURE.md) · [Security](docs/SECURITY.md) · [Roadmap](docs/ROADMAP.md)
 
-[![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?style=for-the-badge&logo=windows11&logoColor=white)](#requirements)
-[![WinUI 3](https://img.shields.io/badge/WinUI%203-Windows%20App%20SDK-5E5CE6?style=for-the-badge)](#technology)
-[![WebView2](https://img.shields.io/badge/WebView2-Chromium-0A84FF?style=for-the-badge&logo=microsoftedge&logoColor=white)](#technology)
-[![.NET 8](https://img.shields.io/badge/.NET-8-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](#development)
-[![Private](https://img.shields.io/badge/Use-Personal%20%2F%20Private-111111?style=for-the-badge)](#project-scope)
+Luma combines a compact, Safari-inspired WinUI 3 shell with Microsoft Edge WebView2, bounded DOM macros, a foreground watch, and a typed local vault. It is intended for personal use on a Windows x64 machine. The design target is a **13th-generation Intel Core i5 with 8 GB RAM**, without a resident model or a second bundled Chromium distribution; this is **not a measured hardware requirement or performance guarantee**.
 
-[![English](https://img.shields.io/badge/README-English-24292f?style=for-the-badge)](./README.md)
-[![한국어](https://img.shields.io/badge/README-한국어-24292f?style=for-the-badge)](./README.ko.md)
+The current app provides deterministic tools and a manual Gemini/Claude handoff. It does not implement an autonomous shopping, booking, coding, email, or calendar agent.
 
-</div>
+## Available now
 
----
+| Area | Implemented behavior |
+| --- | --- |
+| Browsing | Persistent WebView2 profile, multiple tabs, address/search box, back/forward/reload/home, popup requests opened as tabs, loading indicator |
+| Shell | Compact tabs, icon buttons with accessible names and tooltips, light/dark/high-contrast resources, initially hidden 360 px agent sidebar |
+| Page snapshot | Up to 500 visible interactive DOM elements; labels, selectors, and disabled state, with labels limited to 240 characters |
+| Recording | Current-session clicks and navigation on the recording tab; starting a new recording replaces the previous steps |
+| Macro execution | Validated JSON, `navigate`, `click`, `input`, `wait`, `retry`, `if`, and `loop`; bounded time/operations/nesting; explicit approval for each click |
+| Foreground watch | Original-tab watch, exact normalized text matching, 3-second checks, bounded schedule, manual click confirmation, optional follow-up replay |
+| Vault | Add/list/delete/fill typed login, address, and payment-metadata slots; DPAPI protection and optional Windows Credential Manager for login secrets |
+| External AI | Native task review, visible Gemini/Claude tab, explicit Copy task, manual paste/send, selected-reply display |
+| Local services | SQLite audit records; English/Korean rule-based local commands; provider interfaces without installed API adapters |
+| Verification | Windows Release build and console behavioral harness; dependency lock files and locked restore in CI |
 
-## What is Luma?
+### Keyboard shortcuts
 
-Luma is a **personal AI browser** designed around one idea:
+| Shortcut | Action |
+| --- | --- |
+| Ctrl+L | Focus the address box and select its text |
+| Ctrl+T | Open a new tab |
+| Ctrl+W | Close the selected tab |
+| F5 | Reload the selected tab |
 
-> Use it like a normal, clean browser most of the time. When you ask for something, let the browser finish the real work for you.
+The agent button reveals the sidebar. Closing the final tab creates a new home tab. Empty addresses use the Google home page; text that is not recognized as a URL becomes a Google search.
 
-The long-term goal is broader than “AI chat inside a browser.” Luma is meant to become a personal execution layer that can combine:
+## Setup and build
 
-- web browsing,
-- reservation and availability watching,
-- shopping research and checkout assistance,
-- saved addresses and payment methods,
-- email and calendar actions,
-- local files,
-- Git and coding tools,
-- semantic macros,
-- visible external AI delegates,
-- and optional API/local models.
+Use Windows x64, the **.NET 8 SDK**, Windows/WinUI build tooling, and the **WebView2 Evergreen Runtime**. The project targets `net8.0-windows10.0.19041.0` and declares a minimum platform version of `10.0.17763.0`. Check compatibility with the installed Windows App Runtime on the Windows version you use.
 
-Luma is being built **for one private user**, not as a public SaaS product. That allows the design to optimize aggressively for personal workflows while still keeping credentials and payment data behind a proper local security boundary.
+The app is an unpackaged WinUI application and is not Windows App SDK self-contained. Install the Windows App Runtime required by the pinned SDK, in addition to WebView2 Evergreen. A large local LLM and provider API keys are not required.
 
----
+| Direct package | Pinned version |
+| --- | --- |
+| Microsoft.WindowsAppSDK | 2.5.1 |
+| Microsoft.Web.WebView2 | 1.0.4258.31 |
+| Microsoft.Data.Sqlite | 8.0.31 |
+| System.Security.Cryptography.ProtectedData | 8.0.0 |
 
-## Why this project exists
+The WebView2 NuGet package version identifies the development API package; Evergreen supplies and updates the browser runtime separately.
 
-Most AI browser projects optimize for one of these environments:
-
-1. a cloud browser,
-2. a headless automation worker,
-3. a large local agent stack,
-4. an API-first product with ongoing model cost,
-5. a full Chromium fork that is expensive to build and maintain.
-
-Luma targets a different machine and usage pattern:
-
-```text
-Target machine
-──────────────
-Intel Core i5 13th Gen
-8 GB RAM usable baseline
-16 GB RAM recommended
-Windows
-Personal daily use
-```
-
-That changes the architecture.
-
-Instead of running a large model for every click, Luma prefers:
-
-```text
-DOM / rule
-   ↓
-recorded macro
-   ↓
-compact snapshot
-   ↓
-small/on-demand intelligence
-   ↓
-visible external AI delegate
-   ↓
-paid API only when necessary
-```
-
-The browser should do most repetitive work without spending tokens at all.
-
----
-
-## Current status
-
-Luma is in an early functional foundation stage.
-
-### Implemented now
-
-- WinUI 3 Windows app shell
-- persistent WebView2 browser profile
-- multiple browser tabs
-- address bar / search fallback
-- back / forward / reload / home
-- Safari-inspired compact layout direction
-- AI/automation side panel
-- compact DOM snapshot extraction
-- semantic macro recording
-- semantic macro replay
-- foreground-only watch mode
-- optional auto-click when a matching enabled element appears
-- zero-token local intent router for simple commands
-- local SQLite audit log
-- Windows DPAPI-backed secure vault primitive
-- sensitive-action approval policy primitive
-- pluggable AI provider interface
-- visible external-AI delegate interface
-- GitHub Actions Windows build workflow
-
-### Not implemented yet
-
-- production-ready shopping agent
-- actual payment autofill UI
-- actual email/calendar connectors
-- self-healing AI execution
-- Gemini/Claude visible delegate implementation
-- OpenAI/Claude/Gemini API adapters
-- visual macro editor
-- Dev Workspace / Monaco / PowerShell
-- polished browser settings/history/bookmarks/downloads surfaces
-
-See [ROADMAP.md](docs/ROADMAP.md) for the complete staged plan.
-
----
-
-## Core idea: broad autonomy, not one-purpose automation
-
-Luma should not have separate hard-coded apps called “Shopping Bot,” “Reservation Bot,” or “Coding Bot.”
-
-Instead, one agent should compose capabilities depending on the goal.
-
-Example:
-
-```text
-User: "Find sunscreen."
-
-Luma
- ├─ searches multiple stores
- ├─ normalizes price / volume / shipping
- ├─ returns 3–5 useful choices
- └─ waits for selection
-
-User: "Buy #1."
-
-Luma
- ├─ opens the selected store
- ├─ uses existing login session
- ├─ selects option
- ├─ uses saved address if needed
- ├─ uses a saved payment slot if the site has no registered card
- ├─ reaches checkout confirmation
- └─ requests approval before the purchase boundary
-```
-
-Another example:
-
-```text
-User: "Watch this Naver reservation page and grab 19:00 if it opens."
-
-Luma
- ├─ stays on the visible reservation tab
- ├─ checks the page at a small interval
- ├─ pauses when Luma loses foreground activation
- ├─ detects an enabled 19:00 control
- ├─ clicks it if Auto-click is enabled
- └─ continues with a recorded macro / approval flow later
-```
-
-Another future example:
-
-```text
-User: "Fix this repository and ask Gemini for a second opinion."
-
-Luma
- ├─ opens Dev Workspace lazily
- ├─ reads files
- ├─ edits code
- ├─ runs tests
- ├─ opens a visible Gemini delegate
- ├─ sends sanitized context
- ├─ compares the result
- └─ asks before git push
-```
-
----
-
-## Free-first execution
-
-Free usage is a first-class requirement.
-
-Luma should not call an LLM for tasks a browser can solve deterministically.
-
-### Execution priority
-
-```text
-1. Deterministic DOM / JavaScript
-2. Existing semantic macro
-3. Existing site skill
-4. Compact DOM/accessibility snapshot
-5. Optional tiny/on-demand local model
-6. Visible web-AI delegate
-7. Paid API provider
-```
-
-### Why this matters
-
-A reservation page may be watched for a long time. Calling a model every few seconds would be slow, wasteful, and expensive.
-
-Instead, the normal check should look like:
-
-```text
-Is Luma foreground-active?
-  ↓ yes
-Is the target tab selected and visible?
-  ↓ yes
-Find enabled interactive element containing "19:00"
-  ↓ no
-Wait
-```
-
-No model call is required.
-
-A model only enters the loop when the deterministic flow breaks or interpretation is genuinely required.
-
----
-
-## Foreground-only automation
-
-This is intentional behavior, not a limitation to hide.
-
-The personal reservation/watch use case is designed around **visible automation**.
-
-Current rule:
-
-- if Luma is the active window and the target tab is visible → the watch may run,
-- if Luma loses activation → the watch effectively pauses,
-- no hidden always-on reservation daemon is part of the current design.
-
-This makes automation easier to understand and keeps the user aware of what is happening.
-
----
-
-## Semantic macros
-
-Luma records **meaningful DOM actions**, not mouse coordinates.
-
-Bad macro:
-
-```text
-click x=821 y=417
-```
-
-Luma-style macro:
-
-```text
-Navigate → https://example.com/reservation
-Click → button[aria-label="예약"]
-Input → input[name="name"] = ...
-```
-
-This survives normal layout movement much better than coordinate automation.
-
-### Recorder safety
-
-The recorder intentionally ignores values for fields that appear to contain:
-
-- passwords,
-- credit/debit card data,
-- CVC/CVV/security code,
-- OTP / one-time codes.
-
-Future secure macros will store **vault references**, not secret values.
-
-Example:
-
-```text
-vault-fill → payment/personal-visa
-```
-
----
-
-## DOM snapshots instead of constant screenshots
-
-Luma extracts a compact list of visible interactive elements.
-
-Example:
-
-```json
-[
-  {
-    "ref": "@1",
-    "tag": "button",
-    "text": "18:30",
-    "selector": "button:nth-of-type(2)",
-    "disabled": true
-  },
-  {
-    "ref": "@2",
-    "tag": "button",
-    "text": "19:00",
-    "selector": "button:nth-of-type(3)",
-    "disabled": false
-  }
-]
-```
-
-This is cheaper and faster than sending a full screenshot to a vision model on every step.
-
-Vision can remain a fallback for:
-
-- canvas-heavy pages,
-- visually encoded controls,
-- broken DOM semantics,
-- complex layout interpretation.
-
----
-
-## Local Vault
-
-Credentials and personal information should remain local.
-
-The first implementation uses **Windows DPAPI** with `CurrentUser` scope.
-
-Encrypted blobs are stored below:
-
-```text
-%LOCALAPPDATA%\Luma\Vault
-```
-
-The logical key is hashed before it becomes a file name.
-
-### Planned vault domains
-
-```text
-identity/personal
-address/home
-address/dorm
-payment/personal-visa
-login/naver-main
-provider/openai
-provider/anthropic
-provider/gemini
-```
-
-### Payment rule
-
-Luma may eventually fill a saved card locally, but the model itself should not receive the raw card number.
-
-Preferred flow:
-
-```text
-Agent
-  ↓
-"use payment slot personal-visa"
-  ↓
-Local secure fill layer
-  ↓
-Payment form
-```
-
-The model sees metadata such as:
-
-```text
-Personal Visa •••• 1234
-```
-
-not the PAN.
-
-**CVC/CVV is intentionally not persisted.**
-
----
-
-## Approval policy
-
-The architecture keeps a hard distinction between **observing** and **committing**.
-
-### Default no-approval examples
-
-- read page
-- search
-- navigate
-- compare products
-- download
-- inspect code
-
-### Default approval-required examples
-
-- send email
-- create/change calendar event
-- confirm reservation
-- purchase
-- delete data
-- execute shell
-- git push
-
-Because Luma is private/personal, future settings can allow trusted rules such as:
-
-```text
-trusted site + purchase < 30,000 KRW → auto-confirm
-```
-
-but the approval layer remains available in the architecture.
-
----
-
-## Authentication philosophy
-
-Luma should **not bypass** security challenges.
-
-When a site requires:
-
-- CAPTCHA,
-- passkey,
-- SMS OTP,
-- banking/card app confirmation,
-- biometric confirmation,
-- device approval,
-
-Luma should stop at the challenge, let the user complete it, and then continue.
-
-```text
-agent works
-   ↓
-auth challenge
-   ↓
-user completes challenge
-   ↓
-agent resumes
-```
-
----
-
-## AI providers and delegates
-
-The repository already contains provider/delegate contracts so the browser core does not depend on one model vendor.
-
-### Planned API/local providers
-
-- OpenAI
-- Anthropic
-- Gemini
-- OpenRouter
-- Ollama
-- LM Studio
-- custom OpenAI-compatible endpoints
-
-### Visible delegates
-
-Visible delegates are conceptually different from API providers.
-
-Examples:
-
-- open Gemini in a visible tab/window,
-- give it sanitized task context,
-- receive a second opinion,
-- return the result to Luma’s main planner.
-
-A delegate must never receive raw vault secrets.
-
----
-
-## External services vision
-
-Future tools can expose capabilities such as:
-
-```text
-mail.send
-calendar.create
-contacts.lookup
-booking.confirm
-purchase.confirm
-files.read
-files.write
-git.diff
-git.commit
-git.push
-shell.run
-delegate.gemini
-```
-
-The goal is tool composition, for example:
-
-```text
-"Prepare my trip."
-
-search flights
-   + search hotels
-   + compare options
-   + reserve chosen option
-   + create calendar entries
-   + collect confirmation email
-   + save receipts
-```
-
----
-
-## Dev Workspace
-
-Coding features are intentionally planned as **lazy-loaded** components.
-
-On an 8 GB machine, Monaco, terminal, Git helpers and coding-agent state should not consume memory while the browser is being used normally.
-
-Future flow:
-
-```text
-User asks for coding task
-   ↓
-load Dev Workspace
-   ├─ Monaco
-   ├─ PowerShell
-   ├─ Git status / diff
-   ├─ preview tab
-   └─ coding tools
-   ↓
-finish task
-   ↓
-unload heavy components
-```
-
----
-
-## Technology
-
-| Layer | Technology | Reason |
-|---|---|---|
-| UI | WinUI 3 | Native Windows UI, lower overhead than a full Electron browser shell |
-| Browser | WebView2 | Uses installed Chromium-based Edge runtime; avoids bundling another Chromium |
-| Language | C# / .NET 8 | Windows integration, async tooling, simple native services |
-| Local DB | SQLite | Small, reliable audit/config/history storage |
-| Secret protection | Windows DPAPI | Current-user protected local secrets |
-| Automation | JavaScript + DOM | Fast and token-free for common tasks |
-| AI integration | Provider interfaces | Avoid vendor lock-in |
-| CI | GitHub Actions / Windows | Verifies the Windows build path |
-
-As of October 2026, the current project targets the Windows App SDK 2.5 stable family through the NuGet package line.
-
----
-
-## Project structure
-
-```text
-Luma/
-├─ .github/
-│  └─ workflows/
-│     └─ build.yml
-├─ docs/
-│  ├─ ARCHITECTURE.md
-│  ├─ SECURITY.md
-│  └─ ROADMAP.md
-├─ src/
-│  └─ Luma/
-│     ├─ Models/
-│     │  └─ AutomationModels.cs
-│     ├─ Services/
-│     │  ├─ AiProviders.cs
-│     │  ├─ ApprovalPolicy.cs
-│     │  ├─ AuditLogService.cs
-│     │  ├─ BrowserScripts.cs
-│     │  ├─ ForegroundWatchService.cs
-│     │  ├─ LocalIntentRouter.cs
-│     │  ├─ MacroService.cs
-│     │  ├─ SecureVaultService.cs
-│     │  └─ SnapshotService.cs
-│     ├─ App.xaml
-│     ├─ App.xaml.cs
-│     ├─ MainWindow.xaml
-│     ├─ MainWindow.xaml.cs
-│     ├─ app.manifest
-│     └─ Luma.csproj
-├─ .editorconfig
-├─ .gitignore
-├─ Luma.sln
-├─ README.md
-└─ README.ko.md
-```
-
----
-
-## Requirements
-
-Recommended development environment:
-
-- Windows 10 1809 or newer
-- x64 machine
-- .NET 8 SDK
-- Visual Studio 2022/2026 with Windows App SDK / WinUI tooling, or equivalent CLI toolchain
-- Microsoft Edge WebView2 Runtime
-- Windows App Runtime matching the restored Windows App SDK package line
-
-Target usage profile:
-
-```text
-Minimum design target: 8 GB RAM
-Recommended:          16 GB RAM
-CPU target:           13th-gen Core i5 class or similar
-GPU:                  no dedicated GPU required for core browsing/macros
-```
-
-A large local LLM is **not** required for the core browser.
-
----
-
-## Development
-
-Clone:
+From the repository root:
 
 ```powershell
-git clone https://github.com/homesweetlove/Luma.git
-cd Luma
+dotnet restore src/Luma/Luma.csproj -p:Platform=x64 --locked-mode
+dotnet build src/Luma/Luma.csproj -c Release -p:Platform=x64 --no-restore
 ```
 
-Restore:
+Open `Luma.sln` in a Windows WinUI development environment to launch/debug the app, or launch the generated x64 Release executable after installing its runtime prerequisites.
+
+Lock files are checked in. CI uses locked restore so dependency resolution cannot silently change. Intentional package updates require updating and reviewing the lock files.
+
+## Everyday workflows
+
+### Record, import, and replay a macro
+
+1. Select the page you want to automate and open the sidebar.
+2. Choose **Record**. The current URL is captured and the app records subsequent clicks/navigation for that recording tab.
+3. Stop recording. Review the recorded steps; a new recording clears the current macro.
+4. Choose **Replay** with Luma in the foreground and the same intended page selected. Each click requires a native confirmation.
+5. Use **Cancel automation** to cancel replay, stop recording, and stop watching.
+
+**Input recording is disabled by default.** `MacroService.InputCaptureValidator` must be explicitly supplied by the host, and Main does not supply it. The page bridge alone cannot authorize capture of an input value. Imported `input` steps are supported, but the live target is checked for sensitivity, visibility, enabled state, and uniqueness before execution.
+
+**Import** accepts a pasted JSON array, validates the entire program, and replaces the current macro only after successful validation. **Export** displays JSON; **Save locally** writes `%LOCALAPPDATA%\Luma\macro.json`. Export saving uses the service's atomic save path. Ordinary imported input values and URLs can be personal data; exported macros are not encrypted. The app does not automatically reload a saved macro or maintain a named macro library.
+
+See the [macro schema, limits, and nested example](docs/ARCHITECTURE.md#macro-programs). The example requires a controlled page with the stated selectors; it is not a ready-made reservation script.
+
+### Watch one visible control
+
+Enter the exact displayed text in **Foreground Watch**. Whitespace is normalized, but the service does not use substring or fuzzy matching. It requires exactly one eligible control, enabled and unobstructed in the viewport. Observation does not scroll or refresh the page.
+
+- **Start watching** creates a 30-minute watch from now.
+- **Schedule watch** requires full ISO timestamps with a timezone offset or `Z`, for example `2026-10-20T19:00:00+09:00` and `2026-10-20T19:30:00+09:00`. `WatchSchedule.TryParse` checks the format and parses the actual dates. Start must precede end, end must be in the future, and the interval must be at most 24 hours. Timestamps without a timezone are rejected.
+- The watch stays attached to its original tab and origin. Switching tabs or leaving Luma pauses work; returning can resume within the schedule. Closing that tab or navigating it to another origin stops the watch.
+- **Auto-click when found** still requires a native **Click once** confirmation. It does not authorize unattended clicking.
+- **Replay macro when found** runs the current macro only after a confirmed watch click actually succeeds. A find without a click does not start replay.
+- The app must remain open. There is no system wakeup, durable scheduler, or background reservation service.
+
+The execution gate checks the actual foreground OS window handle, selected WebView, and loading state. Expiry is checked on active timer processing; reactivating an expired watch does not extend it.
+
+### Use the local vault
+
+Open the vault button, choose **Add slot**, and select a type:
+
+| Slot | Stored data | Eligible autocomplete fields |
+| --- | --- | --- |
+| Login | Label, exact HTTPS origin, username; password in DPAPI or optional Credential Manager | `username`, `current-password` |
+| Address | Name, address lines, city/region, postal code, country code, email, phone | `name`, `address-line1`, `address-line2`, `address-level2`, `address-level1`, `postal-code`, `country`, `email`, `tel` |
+| Payment metadata | Brand, last four digits, holder, expiry month/year | `cc-name`, `cc-exp-month`, `cc-exp-year` |
+
+Payment slots have **no full card number/PAN, CVV/CVC/security code, or PIN fields**. Brand/last-four identify a slot and are not injected into the page. Full card entry and payment authentication stay manual.
+
+Choose **Fill selected** on the matching HTTPS page. Fill stops recording, checks the foreground/selected tab and document identity, and only uses exact, single-token autocomplete fields in the top-level document. Ambiguous, hidden, disabled, sensitive, or unsafe fields cause refusal. Compound tokens such as `shipping address-line1` are unsupported. Login requires a same-origin HTTPS POST form; detected forms for other supported fields are checked too.
+
+Fill does not submit, click, or dispatch input/change events. Some controlled forms therefore may not register a filled value; review the form and complete it manually. Filling releases data to that site's page scripts. Exact origin matching does not make a site trustworthy.
+
+### Ask a visible delegate
+
+1. Select **Gemini** or **Claude**.
+2. Enter a bounded task in the native dialog; do not include credentials or personal data.
+3. Review the prepared prompt and choose **Open visible tab**.
+4. Complete any sign-in manually. Choose **Copy task** only if you want the reviewed prompt placed on the clipboard.
+5. Paste and send it yourself in the visible tab.
+6. Select reply text and choose **Read selected reply**. Luma displays up to 16,000 selected characters as **untrusted text**.
+
+No page snapshot, cookies, vault content, or automatic page context is attached. Prompt preparation rejects recognizable credential assignments and credential-bearing URLs before email redaction, handles HTTP(S) URLs case-insensitively, redacts email addresses and long numeric sequences, and strips URL query/fragment components. These rules are defensive heuristics, not comprehensive detection of personal information; inspect the prepared prompt.
+
+`VisibleWebAiDelegate.FillComposerAsync` exists as a helper but the Main UI does **not** call it automatically. The app does not send prompts automatically, scrape an entire conversation, execute reply instructions, or turn replies into macros. Provider accounts, terms, usage limits, and possible charges remain the user's responsibility; visible handoff does not guarantee free AI service.
+
+### Local commands
+
+The command box uses simple English/Korean rules, without an LLM. Examples: `snapshot`, `record`, `stop recording`, `replay`, `watch 19:00`, `스냅샷`, `매크로 녹화`, `녹화 중지`, and `매크로 재생`. Unknown commands show guidance; they do not invoke an API provider or an autonomous planner.
+
+## Architecture and Free-First execution
+
+```text
+WinUI 3 shell + shared WebView2 environment
+  ├─ local commands → DOM snapshots / bounded macros / foreground watch
+  ├─ user-approved local fill → typed DPAPI / Credential Manager vault
+  ├─ reviewed task → visible Gemini / Claude tab → manual send
+  └─ origins and action counts → local SQLite audit
+```
+
+Deterministic tools are the default: recording, replay, and watch do not call a model. Tabs share one environment; inactive tabs request suspension and a low memory target. The optional self-heal callback and provider contracts remain explicit extension points. No local LLM is kept resident, and no paid API fallback runs automatically. See [Architecture](docs/ARCHITECTURE.md) for the macro schema, execution limits, document guards, and nested examples.
+
+## Local data
+
+| Location | Contents |
+| --- | --- |
+| `%LOCALAPPDATA%\Luma\WebView2Profile` | Persistent browser profile, including site session state |
+| `%LOCALAPPDATA%\Luma\luma.db` | SQLite audit records |
+| `%LOCALAPPDATA%\Luma\Vault\Typed-v1\<guid>.vault` | DPAPI-encrypted typed records |
+| Windows Credential Manager | Optional login secrets under a Luma profile namespace |
+| `%LOCALAPPDATA%\Luma\macro.json` | Explicitly saved plaintext macro JSON |
+
+There is no app-managed synchronization or automatic cloud vault backup. Browser profile data, audit metadata, exported macros, and explicitly copied delegate prompts require their own privacy care. DPAPI protection covers vault records, not every file under the data directory.
+
+Existing browser profile and audit data are preserved. Legacy untyped `Vault/*.bin` files are not loaded, migrated, or deleted by the new typed vault. An empty typed slot list does not mean old files were removed. User-directed migration remains future work.
+
+## Verification
+
+Run the Windows x64 console harness using build followed by direct DLL execution:
 
 ```powershell
-dotnet restore .\src\Luma\Luma.csproj -p:Platform=x64
+dotnet restore tests/Luma.Tests/Luma.Tests.csproj -p:Platform=x64 --locked-mode
+dotnet build tests/Luma.Tests/Luma.Tests.csproj -c Release -p:Platform=x64 --no-restore
+dotnet tests/Luma.Tests/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/Luma.Tests.dll
 ```
 
-Build:
+This harness is not a `dotnet test` test-adapter project. Direct DLL execution avoids the platform-specific output-path mismatch of `dotnet run`.
+
+Node **22** is used for DOM script regressions. Generate the vault scripts by setting the fixture directory before executing the DLL, then run both JavaScript suites:
 
 ```powershell
-dotnet build .\src\Luma\Luma.csproj -c Debug -p:Platform=x64
+$env:LUMA_VAULT_TEST_SCRIPT_DIRECTORY = Join-Path $env:TEMP 'luma-dom-tests'
+New-Item -ItemType Directory -Force $env:LUMA_VAULT_TEST_SCRIPT_DIRECTORY | Out-Null
+dotnet tests/Luma.Tests/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/Luma.Tests.dll
+node tests/VaultAutofillTests.js $env:LUMA_VAULT_TEST_SCRIPT_DIRECTORY
+node tests/ForegroundWatchTests.js
 ```
 
-Release build:
+VaultTests emits the current production fill scripts into that directory. The JavaScript suites exercise generated vault scripts and production watch scripts in simulated DOM environments; they are not live browser/vendor tests. CI installs .NET 8 and Node 22, performs locked restore for app/tests, builds Release, and runs the DLL and JavaScript regression suites.
 
-```powershell
-dotnet build .\src\Luma\Luma.csproj -c Release -p:Platform=x64
-```
+Coverage includes branches/loops, delayed DOM readiness, unsafe or ambiguous targets, approval and foreground gates, cancellation, single-flight execution, time/operation limits, no effect retries, explicit self-heal opt-in, typed vault validation, exact HTTPS origins, field allowlists, DPAPI tamper/cancellation checks, Credential Manager roundtrip, prompt privacy, JSON roundtrip/refusal, and unapproved bridge input rejection.
 
----
+The current integration run reports a **Release build with zero warnings**, passing vault/Credential Manager, delegate-privacy, JSON, and schedule checks, and **15 macro-runtime scenarios, 17 vault JavaScript cases, and 35 watch production-script cases passing**. Macro and watch click approvals bind the observed source/document tokens and revalidate before dispatch. A live shell/DOM smoke check confirmed launch, sidebar rendering/toggling, Google navigation, a snapshot of 20 DOM elements, and Ctrl+T opening a tab. Native window capture showed a blank WebView surface despite available DOM/accessibility content; a composition-capture limitation is a possible, unconfirmed explanation.
 
-## Current usage
+These checks do not certify complete Gemini/Claude handoffs, reservation-site automation, or performance on an 8 GB machine. Hardware startup, memory, CPU, and battery benchmarks have not been collected.
 
-### Browser
+## Boundaries and next work
 
-Use the address field like a normal browser.
+Automation uses ordinary DOM selectors. It has no cross-origin iframe, shadow-DOM, canvas, CAPTCHA, passkey, OTP, or payment-challenge bypass. Human authentication remains required. DOM changes and site policies can prevent a macro, watch, or delegate from working.
 
-- full URL → navigate directly
-- domain-like text → `https://` is added
-- ordinary text → Google search
+No API/local model adapter, always-on model, automatic self-healing provider, visual macro editor, mail/calendar connector, Git/shell tool, or autonomous checkout/reservation planner is implemented. `IAiProvider`, the registry, the approval-policy enum, and the optional self-heal callback are extension points, not completed integrations.
 
-### Snapshot
+See [Security](docs/SECURITY.md) for trust boundaries and [Roadmap](docs/ROADMAP.md) for clearly separated future work. This repository is for private/personal use; it is not a hosted service or a claim of production readiness.
 
-Click **Snapshot** or type a local command such as:
-
-```text
-스냅샷
-화면 읽어
-snapshot
-```
-
-The sidebar reports the number of visible interactive elements and a short preview.
-
-### Record a macro
-
-Click **● Record**.
-
-Use the page normally. Luma records supported semantic navigation/click/input actions.
-
-Click **■ Stop** when finished.
-
-### Replay
-
-Click **Replay** or type:
-
-```text
-매크로 재생
-replay
-```
-
-### Foreground Watch
-
-Enter visible text, for example:
-
-```text
-19:00
-```
-
-Enable **Auto-click** if desired and click **Start watching**.
-
-Luma checks only while the window remains active.
-
-You can also use the current local command router:
-
-```text
-19:00 자리 생기면
-watch 19:00
-```
-
----
-
-## Data locations
-
-Current local data lives under:
-
-```text
-%LOCALAPPDATA%\Luma\
-```
-
-Important paths:
-
-```text
-WebView2Profile\   persistent browser/session profile
-Vault\             DPAPI-protected secret blobs
-luma.db            SQLite audit database
-```
-
-Do not commit these directories.
-
----
-
-## Security notes
-
-Please read [SECURITY.md](docs/SECURITY.md).
-
-Important defaults:
-
-- raw password values are not recorded into semantic macros,
-- card/CVC/OTP-like input values are filtered at the recorder boundary,
-- CVV/CVC is not intended to be stored,
-- vault blobs use Windows DPAPI CurrentUser protection,
-- external AI delegates must receive sanitized context only,
-- irreversible actions retain an approval-policy boundary.
-
----
-
-## Performance strategy
-
-Luma is intentionally not designed like a giant always-on agent runtime.
-
-### Always lightweight
-
-- WinUI shell
-- active WebView2 tabs
-- tiny timer for watch mode
-- SQLite only when writing
-
-### Load only when needed
-
-- screenshots
-- external model requests
-- local model
-- coding editor
-- PowerShell
-- Git tooling
-- preview servers
-
-This is important for the 8 GB RAM target.
-
----
-
-## Inspiration / reference projects
-
-Luma is an original private project, but its architecture is informed by good ideas visible in open-source agent/browser projects including:
-
-- BrowserOS — agent-friendly Chromium/browser architecture
-- Echo — local Windows Chromium/CDP + MCP approach
-- ego-lite — separate agent spaces and compact browser control concepts
-- Nanobrowser — planner/navigator and local-first browser automation ideas
-- Automa — user-friendly recorded browser workflow concepts
-- Stagehand — self-healing / reusable automation philosophy
-- OpenBrowser — persistent profiles, auth handoff, audit-oriented automation
-- Microsoft Playwright MCP — structured browser control instead of screenshot-only loops
-- PiDurableKit / pi-durable — durable tool/task concepts for future coding workflows
-
-Luma does not aim to be a clone of any one of these projects.
-
----
-
-## Project scope
-
-This repository is private and intended for personal use.
-
-Priorities are therefore:
-
-1. useful personal automation,
-2. low resource usage,
-3. local privacy,
-4. broad tool composability,
-5. visible and understandable automation,
-6. minimal recurring AI cost.
-
-The project is **not** intended to become:
-
-- a CAPTCHA bypass toolkit,
-- a 2FA/passkey bypass system,
-- a hidden background reservation bot,
-- a credential extractor,
-- a payment-security bypass tool,
-- an always-on cloud scraping service.
-
----
-
-## Documentation
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [Security & Privacy](docs/SECURITY.md)
-- [Roadmap](docs/ROADMAP.md)
-- [한국어 README](README.ko.md)
-
----
-
-<div align="center">
-
-**Luma — browse normally, delegate when needed.**
-
-</div>
+The next priorities are real-site and native-focus validation, measured resource use on the target hardware, a named macro library/editor, and explicitly configured optional AI adapters. Mail/calendar and coding tools remain later, separately scoped work.

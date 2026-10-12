@@ -1,787 +1,187 @@
-<div align="center">
-
 # Luma
 
-### 가볍고, 로컬 우선이며, 실제 일을 대신 처리하는 Windows 개인용 AI 브라우저
+**로컬 자동화와 보이는 AI 작업 전달을 제공하는 개인용 Windows 브라우저.**
 
-**Safari 감성 UI · WebView2 · 의미 기반 매크로 · 포그라운드 감시 · 로컬 Vault · Free-first AI 라우팅**
+[English](README.md) · [아키텍처](docs/ARCHITECTURE.md) · [보안](docs/SECURITY.md) · [로드맵](docs/ROADMAP.md)
 
-[![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D4?style=for-the-badge&logo=windows11&logoColor=white)](#요구-환경)
-[![WinUI 3](https://img.shields.io/badge/WinUI%203-Windows%20App%20SDK-5E5CE6?style=for-the-badge)](#기술-스택)
-[![WebView2](https://img.shields.io/badge/WebView2-Chromium-0A84FF?style=for-the-badge&logo=microsoftedge&logoColor=white)](#기술-스택)
-[![.NET 8](https://img.shields.io/badge/.NET-8-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](#개발)
-[![Private](https://img.shields.io/badge/Use-Personal%20%2F%20Private-111111?style=for-the-badge)](#프로젝트-범위)
+Luma는 Safari에서 영감을 받은 간결한 WinUI 3 화면에 Microsoft Edge WebView2, 실행 범위가 제한된 DOM 매크로, 전경 감시, 타입이 지정된 로컬 Vault를 결합합니다. Windows x64 환경의 개인 사용을 위한 프로젝트입니다. 상주 모델이나 별도로 번들한 Chromium 없이 **Intel Core i5 13세대와 8 GB RAM**을 설계 목표로 삼지만, **측정으로 검증한 최소 사양이나 성능 보장은 아닙니다.**
 
-[![English](https://img.shields.io/badge/README-English-24292f?style=for-the-badge)](./README.md)
-[![한국어](https://img.shields.io/badge/README-한국어-24292f?style=for-the-badge)](./README.ko.md)
-
-</div>
-
----
-
-## Luma가 뭔가?
-
-Luma는 단순히 **브라우저 옆에 AI 채팅창을 붙이는 프로젝트가 아니다.**
-
-목표는 평소에는 가볍고 깔끔한 일반 브라우저처럼 사용하다가, 사용자가 원하는 일을 말하면 브라우저가 실제 웹페이지와 로컬 도구를 조합해 끝까지 처리하는 것이다.
-
-예를 들면:
-
-```text
-"썬크림 찾아"
-→ 여러 사이트 검색
-→ 가격/용량/배송 비교
-→ 3~5개 후보 표시
-
-"1번 결제해"
-→ 상품 페이지 진입
-→ 로그인 세션 사용
-→ 옵션 선택
-→ 배송지 입력
-→ 필요하면 로컬 Vault의 저장 카드 자동 입력
-→ 결제 직전 승인
-```
-
-또는:
-
-```text
-"네이버 예약 19:00 자리 생기면 잡아"
-→ 현재 예약 페이지를 화면에 띄워둠
-→ 포그라운드 상태에서만 감시
-→ 19:00 버튼 활성화 감지
-→ 필요 시 자동 클릭
-→ 녹화해둔 후속 예약 매크로 실행
-→ 최종 예약 승인
-```
-
-또는:
-
-```text
-"이 코드 고치고 제미나이한테도 한번 검토시켜"
-→ Dev Workspace 필요할 때만 로드
-→ 코드 수정
-→ 테스트
-→ 화면에 Gemini delegate 열기
-→ 비밀정보 제거한 문맥만 전달
-→ 결과 비교
-→ Git push 전 승인
-```
-
-장기적으로는 브라우저, 예약, 쇼핑, 메일, 캘린더, 파일, Git, 코딩, 매크로, 외부 AI를 **하나의 개인용 Agent 실행환경**으로 묶는 것이 목표다.
-
----
-
-## 개인용 프로젝트로 잡은 이유
-
-이 저장소는 **비공개 + 1인 사용**을 전제로 한다.
-
-따라서 공개 SaaS처럼 모든 사용자에게 맞춘 복잡한 설정이나 서버 구조보다 다음을 우선한다.
-
-1. 내가 실제로 자주 쓰는 작업을 빠르게 자동화
-2. 로컬 개인정보 보호
-3. 8GB RAM에서도 버티는 가벼운 구조
-4. API 비용을 가능한 한 줄이는 구조
-5. 화면을 보면서 작업 상태를 이해할 수 있는 구조
-6. 필요할 때만 무거운 기능을 로드
-
-개인용이라고 해서 보안을 대충 하지 않는다. 오히려 로그인, 주소, 카드, 세션을 실제로 넣을 수 있는 브라우저이기 때문에 Vault 경계는 처음부터 따로 둔다.
-
----
-
-## 대상 PC
-
-Luma는 다음 정도의 PC에서도 돌아가는 것을 설계 기준으로 삼는다.
-
-```text
-CPU: Intel Core i5 13세대급
-RAM: 8GB 사용 가능 기준
-권장 RAM: 16GB
-OS: Windows
-GPU: 핵심 기능에는 외장 GPU 불필요
-```
-
-그래서 다음 선택을 했다.
-
-### 하지 않는 것
-
-- Chromium 전체 포크 상시 빌드/배포
-- Electron 안에 Chromium 한 벌 더 번들
-- 대형 로컬 LLM 상시 실행
-- 매 단계마다 전체 스크린샷을 AI에게 전송
-- 좌표 기반 매크로만 사용
-- 숨겨진 백그라운드 예약 봇
-
-### 대신 하는 것
-
-- WinUI 3
-- WebView2
-- DOM/JavaScript 우선 자동화
-- 의미 기반 매크로
-- compact snapshot
-- 필요할 때만 AI 호출
-- Dev Workspace 지연 로드
-
----
+현재 구현은 결정적 로컬 도구와 Gemini/Claude 수동 작업 전달입니다. 쇼핑·예약·코딩·메일·일정 작업을 스스로 완수하는 범용 에이전트는 구현되어 있지 않습니다.
 
 ## 현재 구현된 기능
 
-### 브라우저
-
-- [x] WinUI 3 앱
-- [x] WebView2 기반 브라우징
-- [x] WebView2 로컬 영구 프로필
-- [x] 여러 탭
-- [x] 주소창
-- [x] 검색어 자동 Google 검색
-- [x] 뒤로 / 앞으로 / 새로고침 / 홈
-- [x] AI/자동화 사이드패널
-
-### Agent / Automation
-
-- [x] 현재 페이지 DOM Snapshot
-- [x] 보이는 상호작용 요소만 추출
-- [x] 의미 기반 클릭 기록
-- [x] 일반 입력 기록
-- [x] 탐색 기록
-- [x] Macro Replay
-- [x] Foreground-only Watch
-- [x] 특정 텍스트 버튼/링크 활성화 감지
-- [x] 선택적으로 자동 클릭
-- [x] 간단한 한국어 로컬 명령 해석
-
-### Privacy / Security
-
-- [x] Password 입력값 매크로 기록 제외
-- [x] 카드/CVC/CVV 계열 입력값 기록 제외
-- [x] OTP/one-time-code 기록 제외
-- [x] Windows DPAPI Vault primitive
-- [x] SQLite 로컬 감사로그
-- [x] 민감 행동 승인 정책 primitive
-
-### AI 확장 구조
-
-- [x] Provider 인터페이스
-- [x] External AI Delegate 인터페이스
-- [x] Vendor 독립적인 Provider Registry
-- [ ] OpenAI 실제 adapter
-- [ ] Claude 실제 adapter
-- [ ] Gemini 실제 adapter
-- [ ] Ollama adapter
-- [ ] Gemini visible delegate
-
----
-
-## Free-first가 핵심
-
-Luma는 가능한 한 **AI를 안 써도 되는 일은 AI를 쓰지 않는다.**
-
-우선순위는 다음과 같다.
-
-```text
-1. DOM / JavaScript 규칙
-2. 이미 성공한 Macro
-3. 사이트 Skill
-4. Compact DOM/Accessibility Snapshot
-5. 필요한 순간에만 작은 로컬 모델
-6. 화면에 보이는 무료 Web AI Delegate
-7. 정말 필요할 때만 유료 API
-```
-
-예를 들어 네이버 예약을 1시간 감시한다고 해서 3초마다 LLM을 호출할 이유가 없다.
-
-```text
-Luma가 활성창인가?
-  ↓
-대상 탭이 현재 화면에 보이는가?
-  ↓
-19:00 버튼이 존재하는가?
-  ↓
-활성화되어 있는가?
-  ↓
-아니면 다음 주기에서 다시 확인
-```
-
-이 과정은 전부 로컬 JS로 처리할 수 있다.
-
-사이트 UI가 바뀌어서 기존 흐름이 깨졌을 때만 AI가 개입하는 구조가 목표다.
-
----
-
-## Foreground-only Watch
-
-이 기능은 일부러 백그라운드 서비스로 만들지 않는다.
-
-현재 원칙:
-
-```text
-Luma 창이 활성 상태
-+ 감시 대상 탭이 현재 선택되어 있음
-= 감시 실행
-```
-
-Luma가 비활성화되면 실제 watch check가 수행되지 않는다.
-
-사용자가 자동화가 돌아가는 화면을 볼 수 있는 상태를 기본값으로 둔다.
-
-### 현재 사용 예시
-
-Watch 입력란:
-
-```text
-19:00
-```
-
-Auto-click 체크:
-
-```text
-✓ Auto-click
-```
-
-그러면 활성화된 `19:00` 버튼/링크가 보일 때까지 감시하고, 찾으면 클릭할 수 있다.
-
-로컬 명령으로도 가능하다.
-
-```text
-19:00 자리 생기면
-watch 19:00
-```
-
----
-
-## Macro
-
-Luma Macro는 좌표를 기록하지 않는다.
-
-### 좋지 않은 방식
-
-```text
-x=820, y=430 클릭
-```
-
-화면 위치가 조금만 바뀌어도 깨진다.
-
-### Luma 방식
-
-```text
-Navigate → 예약페이지
-Click → button[aria-label="예약"]
-Input → input[name="name"]
-Click → #nextButton
-```
-
-DOM selector를 사용한다.
-
-### 현재 기록하는 것
-
-- navigate
-- click
-- input
-
-### 앞으로 추가할 것
-
-- select
-- waitFor
-- assert
-- if/else
-- loop
-- retry
-- download
-- approval
-- vault-fill
-- delegate
-- tool-call
-
----
-
-## 개인정보 / Local Vault
-
-현재 Vault primitive는 **Windows DPAPI CurrentUser**를 사용한다.
-
-저장 위치:
-
-```text
-%LOCALAPPDATA%\Luma\Vault\
-```
-
-Logical key 자체도 파일명으로 직접 쓰지 않고 SHA-256 hash를 사용한다.
-
-장기적으로 저장할 데이터 구조 예시:
-
-```text
-identity/personal
-address/home
-address/dorm
-payment/personal-visa
-login/naver-main
-login/google-main
-provider/openai
-provider/anthropic
-provider/gemini
-```
-
-### 카드정보 원칙
-
-AI에게 카드번호를 프롬프트로 넘기지 않는다.
-
-AI는 다음 정도만 알아야 한다.
-
-```text
-Personal Visa •••• 1234
-```
-
-실제 번호를 입력하는 것은 Local Secure Fill 계층이 한다.
-
-```text
-Agent
- ↓
-usePayment("personal-visa")
- ↓
-Local Vault
- ↓
-브라우저 결제폼 직접 입력
-```
-
-**CVV/CVC는 저장 대상에서 제외한다.**
-
----
-
-## Approval Layer
-
-Luma는 조회와 실제 행동을 구분한다.
-
-### 기본 자동 가능
-
-- 페이지 읽기
-- 검색
-- 이동
-- 상품 비교
-- 다운로드
-- 코드 읽기
-
-### 기본 승인 필요
-
-- 메일 전송
-- 캘린더 생성/수정
-- 예약 확정
-- 결제
-- 데이터 삭제
-- Git push
-- Shell 실행
-
-개인용이므로 나중에는 다음 같은 규칙도 가능하다.
-
-```text
-trusted site
-+ 30,000원 이하
-+ 저장된 반복 구매
-→ 자동 결제 허용
-```
-
-하지만 구조 자체에는 항상 승인 경계를 남긴다.
-
----
-
-## 쇼핑 Agent 최종 목표
-
-예시:
-
-```text
-나: 썬크림 찾아
-```
-
-Luma:
-
-```text
-1. 제품 A
-   50ml
-   17,900원
-   내일 배송
-
-2. 제품 B
-   60ml
-   21,000원
-   무료배송
-
-3. 제품 C
-   50ml
-   15,500원 + 배송비
-```
-
-이후:
-
-```text
-나: 1번 결제해
-```
-
-흐름:
-
-```text
-상품 페이지
-→ 옵션 선택
-→ 장바구니
-→ 주문
-→ 기존 사이트 등록 카드 확인
-→ 없으면 Luma Payment Vault 사용
-→ 배송지 자동입력
-→ 금액/배송지/카드 마지막 확인
-→ 결제 승인
-→ 추가 카드사 인증이 있으면 사용자에게 넘김
-→ 인증 후 다시 이어서 주문 완료 확인
-```
-
----
-
-## 예약 Agent 최종 목표
-
-예시:
-
-```text
-"10월 20일 19시 2명 자리 생기면 예약해"
-```
-
-예상 Planner 결과:
-
-```text
-visible_only: true
-site: current page
-condition:
-  date: 2026-10-20
-  time: 19:00
-  people: 2
-
-on_available:
-  - click available slot
-  - replay reservation-details macro
-  - secure-fill contact
-  - approval: confirm-reservation
-```
-
-반복 감시 자체에는 모델을 사용하지 않고, UI 변경이나 예외 상황에서만 self-healing AI가 개입하는 것이 목표다.
-
----
-
-## 메일 / 캘린더 / 파일
-
-장기적으로 Agent가 사용할 Tool 예시:
-
-```text
-mail.send
-calendar.create
-calendar.update
-contacts.lookup
-files.read
-files.write
-files.move
-downloads.organize
-```
-
-예:
-
-```text
-"교수님한테 내일 연구실 못 간다고 메일 보내고 일정에도 표시해"
-```
-
-Agent:
-
-```text
-calendar 확인
-→ 문맥 파악
-→ 메일 초안
-→ 발송 승인
-→ 메일 발송
-→ 캘린더 상태 업데이트
-```
-
----
-
-## External AI Delegate
-
-API Provider와 Web AI Delegate는 별도 개념으로 둔다.
-
-향후 예:
-
-```text
-Main Luma Agent
- ├─ Gemini Delegate
- ├─ Claude Delegate
- └─ Local/remote providers
-```
-
-사용 예:
-
-```text
-"이 에러 네가 먼저 보고 제미나이한테도 물어봐"
-```
-
-흐름:
-
-```text
-Luma 코드/로그 분석
-→ Gemini 화면 열기
-→ 필요한 비밀정보 제거
-→ 문제 설명 전달
-→ 결과 회수
-→ Luma 판단과 비교
-→ 최종 수정
-```
-
-Web AI를 숨겨진 API처럼 사용하는 것이 아니라 **화면에 보이는 delegate 작업공간**으로 다루는 방향이다.
-
----
-
-## Dev Workspace
-
-코딩 기능은 항상 켜두지 않는다.
-
-8GB RAM 기준이기 때문에 실제 코딩 작업을 요청했을 때만 로드하는 구조가 목표다.
-
-```text
-Dev Workspace
-├─ Monaco Editor
-├─ PowerShell
-├─ Git
-├─ Preview tab
-└─ Coding Agent tools
-```
-
-작업이 없을 때는 unload한다.
-
-향후 지원할 명령 예:
-
-```text
-"이 GitHub 프로젝트 받아서 실행해"
-"오류 고쳐"
-"페이지 디자인 지금 보고 있는 사이트 느낌으로 바꿔"
-"테스트 돌려"
-"제미나이에게 한번 검토시켜"
-"괜찮으면 커밋해"
-```
-
-Git push는 기본 승인 대상이다.
-
----
-
-## 기술 스택
-
-| 영역 | 기술 | 선택 이유 |
-|---|---|---|
-| UI | WinUI 3 | Windows 네이티브 UI, 가벼운 구조 |
-| 브라우저 | WebView2 | 시스템 Chromium 활용, Chromium 별도 번들 불필요 |
-| 언어 | C# / .NET 8 | Windows API/비동기/로컬 서비스 구현 편리 |
-| 로컬 DB | SQLite | 작고 안정적인 로컬 기록 저장 |
-| Secret | Windows DPAPI | 현재 Windows 사용자 단위 암호화 |
-| Automation | JavaScript / DOM | 빠르고 무료, LLM 불필요 |
-| AI | Provider abstraction | OpenAI/Claude/Gemini/Ollama 종속 제거 |
-| CI | GitHub Actions | Windows 빌드 검증 |
-
-2026년 10월 기준 Windows App SDK 2.5 stable 계열을 대상으로 설정했다.
-
----
-
-## 프로젝트 구조
-
-```text
-Luma/
-├─ .github/workflows/build.yml
-├─ docs/
-│  ├─ ARCHITECTURE.md
-│  ├─ SECURITY.md
-│  └─ ROADMAP.md
-├─ src/Luma/
-│  ├─ Models/
-│  │  └─ AutomationModels.cs
-│  ├─ Services/
-│  │  ├─ AiProviders.cs
-│  │  ├─ ApprovalPolicy.cs
-│  │  ├─ AuditLogService.cs
-│  │  ├─ BrowserScripts.cs
-│  │  ├─ ForegroundWatchService.cs
-│  │  ├─ LocalIntentRouter.cs
-│  │  ├─ MacroService.cs
-│  │  ├─ SecureVaultService.cs
-│  │  └─ SnapshotService.cs
-│  ├─ App.xaml
-│  ├─ App.xaml.cs
-│  ├─ MainWindow.xaml
-│  ├─ MainWindow.xaml.cs
-│  ├─ app.manifest
-│  └─ Luma.csproj
-├─ Luma.sln
-├─ README.md
-└─ README.ko.md
-```
-
----
-
-## 요구 환경
-
-개발 권장:
-
-- Windows 10 1809 이상
-- x64
-- .NET 8 SDK
-- Visual Studio + WinUI / Windows App SDK tooling 또는 동등한 CLI 환경
-- Microsoft Edge WebView2 Runtime
-- Windows App Runtime
-
----
-
-## 개발
+| 영역 | 실제 동작 |
+| --- | --- |
+| 브라우징 | 영구 WebView2 프로필, 여러 탭, 주소/검색 입력, 뒤로/앞으로/새로고침/홈, 팝업 요청을 탭으로 열기, 로딩 표시 |
+| 화면 | 간결한 탭, 접근성 이름과 툴팁이 있는 아이콘 버튼, 밝은/어두운/고대비 테마, 기본 숨김 상태의 360 px 에이전트 패널 |
+| DOM 스냅샷 | 보이는 인터랙티브 DOM 요소 최대 500개, 라벨·선택자·비활성 상태, 라벨당 최대 240자 |
+| 녹화 | 현재 세션에서 녹화 탭의 클릭과 이동 기록, 새 녹화 시작 시 기존 단계 교체 |
+| 매크로 | JSON 검증, `navigate`·`click`·`input`·`wait`·`retry`·`if`·`loop`, 시간/작업/중첩 제한, 클릭별 수동 승인 |
+| 전경 감시 | 원래 탭에 연결된 정확한 텍스트 감시, 3초 간격 확인, 시간 범위 설정, 수동 클릭 확인, 선택적 후속 매크로 |
+| Vault | 로그인·주소·결제 메타데이터 슬롯 추가/조회/삭제/채우기, DPAPI, 로그인 비밀의 선택적 Windows 자격 증명 관리자 저장 |
+| 외부 AI | 네이티브 작업 검토, 보이는 Gemini/Claude 탭, 명시적 Copy task, 사용자의 붙여넣기/전송, 선택한 답변 표시 |
+| 로컬 서비스 | SQLite 감사 기록, 한국어/영어 규칙 기반 명령, API 어댑터가 연결되지 않은 공급자 인터페이스 |
+| 검증 | Windows Release 빌드, 콘솔 동작 검증 하네스, 의존성 잠금 파일과 CI locked restore |
+
+### 단축키
+
+| 단축키 | 동작 |
+| --- | --- |
+| Ctrl+L | 주소 입력창으로 이동하고 전체 선택 |
+| Ctrl+T | 새 탭 |
+| Ctrl+W | 선택한 탭 닫기 |
+| F5 | 선택한 탭 새로고침 |
+
+에이전트 버튼으로 패널을 열 수 있습니다. 마지막 탭을 닫으면 새 홈 탭을 만듭니다. 빈 주소는 Google 홈으로 이동하고 URL로 인식되지 않는 텍스트는 Google 검색으로 처리합니다.
+
+## 개발 환경과 빌드
+
+Windows x64, **.NET 8 SDK**, Windows/WinUI 빌드 도구, **WebView2 Evergreen Runtime**이 필요합니다. 프로젝트 대상은 `net8.0-windows10.0.19041.0`, 선언된 최소 플랫폼 버전은 `10.0.17763.0`입니다. 사용하는 Windows 버전과 설치된 Windows App Runtime의 호환성도 확인해야 합니다.
+
+앱은 패키징되지 않은 WinUI 앱이며 Windows App SDK 자체 포함 배포가 아닙니다. 고정된 SDK에 필요한 Windows App Runtime과 WebView2 Evergreen을 설치하세요. 대형 로컬 LLM이나 공급자 API 키는 기본 브라우징/매크로에 필요하지 않습니다.
+
+| 직접 의존성 | 고정 버전 |
+| --- | --- |
+| Microsoft.WindowsAppSDK | 2.5.1 |
+| Microsoft.Web.WebView2 | 1.0.4258.31 |
+| Microsoft.Data.Sqlite | 8.0.31 |
+| System.Security.Cryptography.ProtectedData | 8.0.0 |
+
+WebView2 NuGet 버전은 개발 API 패키지의 버전입니다. 실제 브라우저 엔진은 별도의 Evergreen Runtime이 제공하고 업데이트합니다.
+
+저장소 루트에서 실행합니다.
 
 ```powershell
-git clone https://github.com/homesweetlove/Luma.git
-cd Luma
+dotnet restore src/Luma/Luma.csproj -p:Platform=x64 --locked-mode
+dotnet build src/Luma/Luma.csproj -c Release -p:Platform=x64 --no-restore
 ```
 
-Restore:
+Windows WinUI 개발 환경에서 `Luma.sln`을 열어 실행/디버깅하거나, 런타임 설치 후 생성된 x64 Release 실행 파일을 실행할 수 있습니다. 잠금 파일은 저장소에 포함됩니다. CI는 locked restore로 의존성의 임의 변경을 막으며, 의도적인 패키지 변경 시 잠금 파일도 갱신하고 검토해야 합니다.
+
+## 사용 흐름
+
+### 매크로 녹화, 가져오기, 재생
+
+1. 작업할 페이지를 선택하고 패널을 엽니다.
+2. **Record**를 누릅니다. 현재 URL과 이후 해당 녹화 탭의 클릭/이동을 기록합니다.
+3. 녹화를 중지하고 단계를 검토합니다. 새 녹화는 현재 매크로를 지웁니다.
+4. Luma를 전경에 두고 원하는 탭을 선택한 상태에서 **Replay**를 누릅니다. 매크로의 각 클릭에는 네이티브 확인창이 나타납니다.
+5. **Cancel automation**은 재생 취소와 녹화/감시 중지를 요청합니다.
+
+**입력 값 녹화는 기본적으로 비활성화되어 있습니다.** 호스트가 `MacroService.InputCaptureValidator`를 명시적으로 제공해야 하지만 Main은 이를 제공하지 않습니다. 웹 페이지가 보내는 메타데이터만으로 입력 값 녹화를 허용하지 않습니다. JSON으로 가져온 `input` 단계는 사용할 수 있으나, 실행 시 대상의 민감성·가시성·활성 상태·유일성을 다시 검사합니다.
+
+**Import**는 JSON 배열을 붙여넣는 기능입니다. 전체 프로그램 검증이 성공해야 현재 매크로를 교체합니다. **Export**는 JSON을 표시하고, **Save locally**는 서비스의 원자적 저장 경로를 사용해 `%LOCALAPPDATA%\Luma\macro.json`에 저장합니다. 일반 입력 값이나 URL에도 개인정보가 들어갈 수 있으며 내보낸 JSON은 암호화되지 않습니다. 저장 파일을 자동으로 불러오거나 이름별 매크로 라이브러리를 관리하지 않습니다.
+
+[매크로 스키마·제한·중첩 예제](docs/ARCHITECTURE.md#macro-programs)를 참고하세요. 예제는 명시된 선택자가 있는 테스트 페이지가 필요하며 특정 예약 사이트용 완성 스크립트가 아닙니다.
+
+### 화면에 보이는 컨트롤 감시
+
+**Foreground Watch**에 컨트롤에 실제로 표시되는 정확한 텍스트를 입력합니다. 공백은 정규화하지만 부분 문자열이나 유사도 매칭은 사용하지 않습니다. 현재 뷰포트에서 가려지지 않고 활성화된 대상이 정확히 하나여야 합니다. 관찰은 페이지를 스크롤하거나 새로고침하지 않습니다.
+
+- **Start watching**은 현재부터 30분 동안 감시합니다.
+- **Schedule watch**는 시간대 offset 또는 `Z`가 있는 전체 ISO 타임스탬프를 요구합니다. 예: `2026-10-20T19:00:00+09:00`, `2026-10-20T19:30:00+09:00`. `WatchSchedule.TryParse`가 형식과 실제 날짜를 검증합니다. 시작은 종료보다 앞서야 하고 종료는 미래여야 하며 간격은 최대 24시간입니다. 시간대 없는 입력은 거절합니다.
+- 감시는 원래 탭과 origin에 연결됩니다. 다른 탭이나 다른 앱으로 이동하면 작업을 일시 정지하고, 시간 범위 안에서 돌아오면 이어갈 수 있습니다. 원래 탭을 닫거나 다른 origin으로 이동하면 감시를 종료합니다.
+- **Auto-click when found**를 켜도 발견 후 **Click once** 확인이 필요합니다. 무인 자동 클릭 승인이 아닙니다.
+- **Replay macro when found**는 승인된 감시 클릭이 실제 성공한 뒤에만 현재 매크로를 재생합니다. 클릭 없이 발견만 한 경우 재생하지 않습니다.
+- Luma가 열려 있어야 합니다. OS 깨우기, 영구 예약 스케줄러, 백그라운드 예약 서비스는 없습니다.
+
+실행 게이트는 실제 전경 OS 창 핸들, 선택된 WebView, 로딩 상태를 확인합니다. 만료는 활성 타이머 처리 때 검사하며, 만료된 감시에 다시 돌아와도 종료 시간이 연장되지 않습니다.
+
+### 로컬 Vault
+
+Vault 버튼에서 **Add slot**을 선택합니다.
+
+| 종류 | 저장 정보 | 허용되는 autocomplete |
+| --- | --- | --- |
+| 로그인 | 라벨, 정확한 HTTPS origin, 사용자명; DPAPI 또는 선택적 자격 증명 관리자에 비밀번호 | `username`, `current-password` |
+| 주소 | 이름, 주소 두 줄, 도시/지역, 우편번호, 국가 코드, 이메일, 전화 | `name`, `address-line1`, `address-line2`, `address-level2`, `address-level1`, `postal-code`, `country`, `email`, `tel` |
+| 결제 메타데이터 | 브랜드, 마지막 네 자리, 명의자, 만료 월/연도 | `cc-name`, `cc-exp-month`, `cc-exp-year` |
+
+결제 슬롯에는 **전체 카드번호/PAN, CVV/CVC/보안 코드, PIN 필드가 없습니다.** 브랜드와 마지막 네 자리는 표시용이며 페이지에 주입하지 않습니다. 카드번호 입력과 결제 인증은 사용자가 직접 수행합니다.
+
+일치하는 HTTPS 페이지에서 **Fill selected**를 선택하면 녹화를 중지하고 전경/탭/문서 상태를 검사합니다. 최상위 문서의 정확한 단일 autocomplete 토큰만 사용합니다. 중복·숨김·비활성·민감·안전하지 않은 필드는 거절합니다. `shipping address-line1` 같은 복합 토큰은 지원하지 않습니다. 로그인은 같은 origin의 HTTPS POST 폼이 필요하며 다른 종류도 발견된 폼의 action/method를 검사합니다.
+
+채우기는 제출·클릭·input/change 이벤트를 발생시키지 않습니다. 일부 제어형 폼은 값을 인식하지 못할 수 있으므로 직접 확인하세요. 채운 정보는 해당 사이트의 페이지 스크립트에 노출될 수 있습니다. 정확한 origin 일치가 사이트의 신뢰성을 보장하지는 않습니다.
+
+### 보이는 Gemini/Claude 작업 전달
+
+1. **Gemini** 또는 **Claude**를 선택합니다.
+2. 네이티브 창에 범위가 명확한 작업을 입력합니다. 비밀이나 개인정보를 넣지 마세요.
+3. 준비된 프롬프트를 검토하고 **Open visible tab**을 선택합니다.
+4. 필요한 로그인은 직접 완료합니다. 클립보드에 복사할 때만 **Copy task**를 선택합니다.
+5. 보이는 탭에서 직접 붙여넣고 전송합니다.
+6. 답변 텍스트를 선택한 뒤 **Read selected reply**를 누릅니다. 최대 16,000자를 **신뢰하지 않는 외부 텍스트**로 표시합니다.
+
+DOM 스냅샷, 쿠키, Vault, 자동 페이지 문맥은 첨부하지 않습니다. 프롬프트 준비는 인식 가능한 비밀 할당을 거절하고, 이메일 가리기 전에 자격 증명이 포함된 URL을 거절합니다. HTTP(S) URL은 대소문자 구분 없이 처리하며 이메일·긴 숫자열을 가리고 URL의 쿼리/fragment를 제거합니다. 이는 보조 규칙이며 모든 개인정보를 탐지하지 못하므로 반드시 내용을 검토하세요.
+
+`VisibleWebAiDelegate.FillComposerAsync` 보조 메서드는 존재하지만 Main 화면은 이를 자동으로 호출하지 않습니다. 자동 전송, 전체 대화 수집, 답변 지시 실행, 답변의 매크로 변환은 없습니다. 외부 공급자의 계정·약관·사용량 제한·요금은 별도로 적용되며 무료 사용을 보장하지 않습니다.
+
+### 로컬 명령
+
+명령창은 LLM 없이 한국어/영어 규칙으로 동작합니다. 예: `snapshot`, `record`, `stop recording`, `replay`, `watch 19:00`, `스냅샷`, `매크로 녹화`, `녹화 중지`, `매크로 재생`. 알 수 없는 명령은 안내를 표시할 뿐 공급자 API나 범용 계획기를 실행하지 않습니다.
+
+## 아키텍처와 Free-First 실행
+
+```text
+WinUI 3 화면 + 공유 WebView2 환경
+  ├─ 로컬 명령 → DOM 스냅샷 / 제한된 매크로 / 전경 감시
+  ├─ 사용자 승인 로컬 입력 → 타입별 DPAPI / 자격 증명 관리자 Vault
+  ├─ 검토한 작업 → 보이는 Gemini / Claude 탭 → 사용자 전송
+  └─ origin과 작업 건수 → 로컬 SQLite 감사 기록
+```
+
+녹화·재생·감시는 모델 호출 없이 동작합니다. 탭은 하나의 환경을 공유하고 비활성 탭에는 실행 일시 중지와 낮은 메모리 목표를 요청합니다. self-heal 콜백과 공급자 인터페이스는 명시적으로 연결하는 확장 지점입니다. 로컬 LLM을 상주시키거나 유료 API로 자동 전환하지 않습니다. 매크로 스키마·실행 제한·문서 검사·중첩 예제는 [아키텍처](docs/ARCHITECTURE.md)에 설명되어 있습니다.
+
+## 로컬 데이터
+
+| 위치 | 내용 |
+| --- | --- |
+| `%LOCALAPPDATA%\Luma\WebView2Profile` | 사이트 세션 등을 포함한 영구 브라우저 프로필 |
+| `%LOCALAPPDATA%\Luma\luma.db` | SQLite 감사 기록 |
+| `%LOCALAPPDATA%\Luma\Vault\Typed-v1\<guid>.vault` | DPAPI로 보호한 타입별 기록 |
+| Windows 자격 증명 관리자 | Luma 프로필 네임스페이스의 선택적 로그인 비밀 |
+| `%LOCALAPPDATA%\Luma\macro.json` | 사용자가 명시적으로 저장한 평문 매크로 JSON |
+
+앱 자체의 동기화나 자동 클라우드 Vault 백업은 없습니다. 브라우저 프로필, 감사 메타데이터, 매크로, 명시적으로 복사한 작업 프롬프트도 개인정보로 관리해야 합니다. DPAPI 보호는 Vault 기록에 적용되며 데이터 디렉터리 전체를 암호화하지 않습니다.
+
+기존 브라우저 프로필과 감사 데이터는 유지합니다. 이전 비타입 `Vault/*.bin`은 새 Vault가 읽거나 변환하거나 삭제하지 않습니다. 타입별 목록이 비어 있어도 예전 파일이 제거된 것은 아닙니다. 사용자 지시 기반 마이그레이션은 향후 작업입니다.
+
+## 검증
+
+Windows x64 콘솔 하네스는 빌드 후 DLL을 직접 실행합니다.
 
 ```powershell
-dotnet restore .\src\Luma\Luma.csproj -p:Platform=x64
+dotnet restore tests/Luma.Tests/Luma.Tests.csproj -p:Platform=x64 --locked-mode
+dotnet build tests/Luma.Tests/Luma.Tests.csproj -c Release -p:Platform=x64 --no-restore
+dotnet tests/Luma.Tests/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/Luma.Tests.dll
 ```
 
-Debug Build:
+`dotnet test` 어댑터 기반 프로젝트가 아닙니다. DLL 직접 실행은 `dotnet run`의 플랫폼별 출력 경로 불일치를 피합니다.
+
+DOM 스크립트 회귀 검증에는 **Node 22**를 사용합니다. DLL 실행 전에 fixture 디렉터리를 지정하여 Vault 스크립트를 생성한 뒤 두 JS 테스트를 실행합니다.
 
 ```powershell
-dotnet build .\src\Luma\Luma.csproj -c Debug -p:Platform=x64
+$env:LUMA_VAULT_TEST_SCRIPT_DIRECTORY = Join-Path $env:TEMP 'luma-dom-tests'
+New-Item -ItemType Directory -Force $env:LUMA_VAULT_TEST_SCRIPT_DIRECTORY | Out-Null
+dotnet tests/Luma.Tests/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/Luma.Tests.dll
+node tests/VaultAutofillTests.js $env:LUMA_VAULT_TEST_SCRIPT_DIRECTORY
+node tests/ForegroundWatchTests.js
 ```
 
-Release Build:
+VaultTests가 현재 구현의 fill 스크립트를 해당 디렉터리에 생성합니다. JS 테스트는 생성 Vault/production watch 스크립트와 모의 DOM을 검사하며 실제 공급자 브라우저 테스트가 아닙니다. CI는 .NET 8/Node 22 설치, 앱·테스트 locked restore, Release 빌드, DLL과 JS 회귀 테스트를 실행하도록 구성됩니다.
 
-```powershell
-dotnet build .\src\Luma\Luma.csproj -c Release -p:Platform=x64
-```
+분기/반복, 지연된 DOM 준비, 모호하거나 안전하지 않은 대상, 승인/전경 게이트, 취소, 단일 재생, 시간/작업 예산, 실행된 효과 재시도 금지, 명시적 self-heal 동의, Vault 타입 검증·정확한 origin·필드 허용 목록, DPAPI 변조/취소, 자격 증명 관리자 왕복, 프롬프트 개인정보 처리, JSON 왕복/거절, 승인되지 않은 브리지 입력 거절을 검사합니다.
 
----
+현재 통합 검증에서는 **Release 빌드 경고 0개**, Vault/자격 증명 관리자·delegate privacy·JSON·스케줄 검증 통과, **매크로 런타임 15개·Vault JS 17개·감시 production-script 35개 사례 통과**가 보고되었습니다. 매크로/감시 클릭 승인은 관찰한 source/document token에 연결하고 실행 직전 다시 검사합니다. 실제 화면 스모크에서는 실행, 사이드바 표시/토글, Google 이동, DOM 스냅샷 20개, Ctrl+T 새 탭을 확인했습니다. 네이티브 창 캡처에서 WebView 영역이 빈 상태로 보였지만 DOM/접근성 정보는 있었으며, composition 캡처 제한 가능성은 아직 확정하지 않았습니다.
 
-## 현재 간단 사용법
+이 검증은 Gemini/Claude 전체 동작이나 예약 사이트 자동화 완료를 의미하지 않습니다. 8 GB 환경의 시작 시간·메모리·CPU·배터리 하드웨어 벤치마크도 아직 없습니다.
 
-### Snapshot
+## 지원 범위와 다음 작업
 
-상단 **Snapshot** 버튼 또는:
+자동화는 일반 DOM 선택자를 사용합니다. cross-origin iframe, shadow DOM, canvas, CAPTCHA, passkey, OTP, 결제 인증을 우회하지 않습니다. 인증은 사람이 수행하며, 사이트 DOM 변경이나 정책 때문에 작업이 중단될 수 있습니다.
 
-```text
-스냅샷
-화면 읽어
-페이지 읽어
-snapshot
-```
+API/로컬 모델 어댑터, 상주 모델, 자동 self-healing 공급자, 시각적 매크로 편집기, 메일/일정 연동, Git/shell 도구, 자율 결제/예약 계획기는 구현되어 있지 않습니다. `IAiProvider`, 레지스트리, 승인 정책 enum, self-heal 콜백은 확장 지점이며 완성된 연동이 아닙니다.
 
-### Macro 녹화
+[보안 문서](docs/SECURITY.md)와 [향후 작업](docs/ROADMAP.md)을 참고하세요. Luma는 개인/비공개 사용을 위한 프로젝트이며 호스팅 서비스나 프로덕션 준비 완료를 주장하지 않습니다.
 
-```text
-매크로 녹화
-```
-
-또는 `● Record`.
-
-종료:
-
-```text
-녹화 끝
-```
-
-재생:
-
-```text
-매크로 재생
-```
-
-### Watch
-
-```text
-19:00 자리 생기면
-```
-
-또는:
-
-```text
-watch 19:00
-```
-
----
-
-## 로컬 데이터 위치
-
-```text
-%LOCALAPPDATA%\Luma\
-```
-
-현재 주요 데이터:
-
-```text
-WebView2Profile\  로그인/쿠키 등을 포함한 브라우저 프로필
-Vault\            DPAPI 암호화 blob
-luma.db           감사로그 SQLite DB
-```
-
-이 데이터는 Git에 올리지 않는다.
-
----
-
-## 보안 원칙
-
-자세한 내용은 [SECURITY.md](docs/SECURITY.md) 참고.
-
-핵심:
-
-- 비밀번호를 AI prompt에 넣지 않기
-- 카드번호를 AI prompt에 넣지 않기
-- CVV 저장 안 하기
-- OTP 저장 안 하기
-- Macro에 secret 값 기록 안 하기
-- 외부 AI에는 필요한 문맥만 전달
-- 결제/예약/메일/삭제/쉘/Git push는 승인 경계 유지
-
----
-
-## 참고한 오픈소스 아이디어
-
-구조와 아이디어를 조사할 때 참고한 프로젝트:
-
-- BrowserOS
-- Echo
-- ego-lite
-- Nanobrowser
-- Automa
-- Stagehand
-- OpenBrowser
-- Microsoft Playwright MCP
-- PiDurableKit / pi-durable
-
-Luma는 특정 프로젝트 하나를 복제하는 것이 아니라, 필요한 아이디어를 참고해 **Windows 개인용 저사양 친화 구조로 새로 설계**하는 프로젝트다.
-
----
-
-## 프로젝트 범위
-
-이 프로젝트는 개인 비공개 사용용이다.
-
-하지 않는 것:
-
-- CAPTCHA 우회
-- 2FA/passkey 우회
-- 카드사 인증 우회
-- 숨겨진 백그라운드 예약 봇
-- 자격증명 추출
-- CVV 저장
-- 무조건적인 자동 결제
-- 대형 로컬 LLM 상시 실행
-
----
-
-## 문서
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [Security & Privacy](docs/SECURITY.md)
-- [Roadmap](docs/ROADMAP.md)
-- [English README](README.md)
-
----
-
-<div align="center">
-
-### Luma
-
-**평소에는 가벼운 브라우저. 필요할 때는 일을 끝내주는 개인 Agent.**
-
-</div>
+다음 우선순위는 실제 사이트·네이티브 포커스 검증, 목표 하드웨어에서의 자원 측정, 이름별 매크로 라이브러리·편집기, 명시적으로 설정하는 선택적 AI 어댑터입니다. 메일·일정·코딩 도구는 이후 별도 범위로 구현합니다.

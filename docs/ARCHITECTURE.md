@@ -1,344 +1,209 @@
-# Luma Architecture
+# Architecture / 아키텍처
 
-Luma is a personal, Windows-first, local-first agent browser optimized for a machine with an Intel Core i5 13th-gen CPU and 8 GB RAM. The architecture deliberately avoids a bundled Chromium fork and avoids keeping a local LLM resident in memory.
+Luma is a private Windows x64 browser with bounded local automation. This document describes implemented code, including the current UI wiring. Extension contracts are identified separately from working integrations.
 
-## Design goals
+Luma는 개인용 Windows x64 브라우저입니다. 이 문서는 실제 구현과 현재 화면 연결을 설명하며, 확장용 인터페이스를 완성된 기능으로 취급하지 않습니다.
 
-1. **8 GB RAM must be usable.** Browser automation should normally be deterministic JavaScript/DOM work, not a permanent LLM loop.
-2. **The browser remains visible.** Automation is designed around the browser the user is actively watching.
-3. **Foreground-only automation is a first-class mode.** A watch can pause as soon as Luma loses foreground activation.
-4. **Secrets stay local.** Passwords, payment data, addresses, provider keys, and session state must never be placed into ordinary agent prompts.
-5. **Agents compose tools.** Shopping, booking, calendar, email, code, files, and macros are tools behind one agent runtime rather than separate products.
-6. **Free-first execution.** Rules and macros run before any model. Models are escalation paths, not the default execution engine.
+## Runtime and ownership / 실행 구조
 
-## High-level layout
+The app uses C#/.NET 8, native WinUI 3, Windows App SDK **2.5.1**, and WebView2 Evergreen. Each browser tab owns a WebView2 control; all tabs share one `CoreWebView2Environment` and the persistent `%LOCALAPPDATA%\Luma\WebView2Profile` directory.
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│ Luma WinUI 3 shell                                              │
-│  Safari-inspired toolbar · tabs · sidebar · approval surfaces   │
-├─────────────────────────────────────────────────────────────────┤
-│ WebView2 runtime                                                │
-│  persistent local profile · cookies · downloads · normal login  │
-├────────────────────────┬────────────────────────────────────────┤
-│ Deterministic engine   │ Agent layer                            │
-│ DOM snapshot           │ Local intent router                    │
-│ semantic click/fill    │ provider registry                      │
-│ macro recorder/replay  │ visible external-AI delegates          │
-│ foreground watch       │ future planning/self-healing           │
-├────────────────────────┴────────────────────────────────────────┤
-│ Local services                                                   │
-│ DPAPI Vault · SQLite audit log · approval policy · preferences   │
-├─────────────────────────────────────────────────────────────────┤
-│ Optional lazy tools                                               │
-│ Dev workspace · PowerShell · Git · Monaco · mail/calendar tools  │
-└─────────────────────────────────────────────────────────────────┘
+MainWindow + MainWindow.Vault
+  ├─ Native toolbar, tabs, sidebar, dialogs and keyboard accelerators
+  ├─ WebView2 tabs → untrusted websites and persistent browser sessions
+  ├─ SnapshotService → bounded DOM observations
+  ├─ MacroService → validated programs → MacroRuntime → WebViewMacroHost
+  ├─ WatchSchedule + ForegroundWatchService → original-tab observation/click
+  ├─ SecureVaultService → DPAPI typed records + optional CredentialManagerStore
+  │    └─ VaultAutofillService → restricted, user-initiated fill
+  ├─ DelegatePrivacy + VisibleWebAiDelegate → reviewed manual web-AI handoff
+  └─ AuditLogService → SQLite action metadata
 ```
 
-## Why WebView2
+`MainWindow.xaml.cs` owns tab lifecycle, navigation state, cancellation, watch state, visible handoffs, and native approvals. `MainWindow.Vault.cs` owns the vault dialogs and calls the fill service. `App.xaml` provides compact native-control styles and theme resources. The sidebar starts collapsed and opens at 360 px.
 
-Luma uses the installed Microsoft Edge WebView2 runtime instead of packaging another Chromium distribution.
+Tabs use shared profile/session state rather than independent disposable browser identities. Closed tabs dispose their controls. Inactive tabs request a low memory target and suspension when not loading; selection resumes the active tab. Suspension is best effort, not a memory quota.
 
-Benefits for this project:
+네이티브 MainWindow가 탭·승인·취소·감시를 관리합니다. 탭은 동일한 브라우저 프로필을 공유합니다. 비활성 탭의 메모리 목표를 낮추고 일시 정지를 시도하지만 메모리 사용량을 보장하지 않습니다.
 
-- lower disk usage than a full Chromium fork,
-- lower development and update burden,
-- normal Chromium-compatible web behavior,
-- a persistent local profile for real logins,
-- direct JavaScript execution and browser events,
-- support for DevTools-based expansion later,
-- good fit for Windows-only personal software.
+## Execution gate / 전경 실행 게이트
 
-The trade-off is that Luma is intentionally Windows-specific in its first phase.
+`CanExecute` requires an open app, window activation, equality with the actual Windows foreground handle, the selected registered WebView, and a page that is not loading. It is more specific than checking a Boolean “active” flag.
 
-## Browser shell
+- Macro replay stops on gate denial. It does not pause and automatically resume.
+- Watch checks pause on a different tab/window, and can resume on the original tab within the original schedule.
+- Closing the target stops its watch/recording and cancels automation.
+- Changing the watched origin stops the watch.
+- Cancellation cannot undo a navigation or JavaScript effect already dispatched.
 
-`MainWindow.xaml` contains the first usable shell:
+Macro DOM observation carries the source URL and a document identity based on `performance.timeOrigin`. Runtime checks bind a click/input to that observed document, recheck after approval, and require the same identity inside the effect script. This prevents reusing approval after a navigation or reload; it does not prove that arbitrary page content is trustworthy.
 
-- back / forward / reload / home,
-- omnibox-style address/search box,
-- TabView-based multiple tabs,
-- compact agent sidebar,
-- semantic macro recorder controls,
-- foreground watch controls,
-- local command box.
+실제 OS 전경 창과 선택된 WebView를 검사합니다. 매크로는 게이트가 닫히면 중지하고 감시는 원래 시간 범위 안에서 일시 정지/재개합니다. 취소는 이미 전송한 클릭이나 이동을 되돌리지 못합니다. 매크로 승인에는 URL과 문서 identity를 연결하고 실행 직전 다시 확인합니다.
 
-Each `TabViewItem` owns one `WebView2` instance. All tabs share one `CoreWebView2Environment` and one local profile directory under `%LOCALAPPDATA%\Luma\WebView2Profile`.
+## DOM snapshots / DOM 스냅샷
 
-## Snapshot engine
+`SnapshotService` executes `BrowserScripts.SnapshotScript` in the current document. It returns at most 500 visible interactive elements: `ref`, `tag`, `role`, `text`, `selector`, and `disabled`. Labels are capped at 240 characters and recognized sensitive fields are labeled `[sensitive]`; it does not export input values as a form payload.
 
-`SnapshotService` executes `BrowserScripts.SnapshotScript` in the active page.
+Selectors prefer IDs, test IDs, names, and accessible labels, then fall back to a DOM path. `@1`-style references are snapshot-local, not a durable element registry. Visibility is a DOM heuristic, not a screenshot or complete accessibility-tree audit. Snapshot text remains untrusted and may contain personal information.
 
-The script extracts only visible interactive elements and returns a compact structure:
+The native Snapshot action shows a short preview and logs an item count; it does not send the snapshot to a model.
+
+최대 500개 요소와 240자 라벨을 추출합니다. 스냅샷 참조는 일시적이며 영구 요소 레지스트리가 아닙니다. 페이지 텍스트는 신뢰하지 않으며 자동으로 외부 모델에 보내지 않습니다.
+
+## Macro programs
+
+### Recording and persistence / 녹화와 저장
+
+`MacroBridgeScript` observes trusted click/change events and posts narrow recording messages. Native code accepts them only for the recording tab, from the current page source, while the execution gate permits capture. Messages are still untrusted and validated by `MacroService`.
+
+**Current UI recording captures navigation and clicks only.** Input capture requires `InputCaptureValidator`, and Main supplies no validator. Sensitive-field heuristics in the bridge are not sufficient authorization to record values. A new recording replaces the current steps; the current URL is captured first.
+
+Import is a pasted JSON array. Property names are case-insensitive; kinds and conditions use the lowercase names below. Unknown properties, invalid types, explicit null step arrays, and unsupported programs are rejected before replacement. Import failure leaves the existing program intact.
+
+The import text editor limits input to **131,072 characters**; the service separately limits JSON import/export to **1 MiB UTF-8**. Export shows the JSON, then saves only on **Save locally**. Main calls `SaveAsync(_dataRoot, "macro.json")`, using a temporary file and replacement in the same directory. General service helpers default to `macros.json`; this is not the UI filename. There is no automatic startup load, named library, or SQLite macro persistence.
+
+현재 화면에서는 클릭과 이동만 녹화합니다. 입력 녹화에는 Main이 제공하지 않는 명시적 허용 검증기가 필요합니다. JSON 가져오기는 전체 검증 후 교체하며 실패 시 기존 매크로를 유지합니다. 편집창 제한은 131,072자, 서비스 제한은 UTF-8 1 MiB입니다. 내보내기는 사용자의 저장 선택 후 `macro.json`을 원자적으로 교체하며 자동 시작 로드는 없습니다.
+
+### Step semantics / 단계 의미
+
+| Kind | Required data | Behavior |
+| --- | --- | --- |
+| `navigate` | Absolute HTTP(S) `Url` | Navigate and await completion of the matching navigation |
+| `click` | `Selector` | Await one ready nonsensitive target, obtain native approval, revalidate, click once |
+| `input` | `Selector`, `Value` | Await one ready nonsensitive input/textarea, set value and dispatch input/change |
+| `wait` | `Selector`, optional `Condition` | Poll a DOM condition without an effect |
+| `retry` | Exactly one click/input/wait in `Steps` | Retry readiness within the child's total timeout; never replay a dispatched effect |
+| `if` | `Selector`, `Condition`, `Steps`, `ElseSteps` | Observe once and execute the matching branch |
+| `loop` | `LoopCount`, `Steps` | Repeat the body a fixed number of times |
+
+Conditions are `ready` (default), `exists`, `absent`, `visible`, and `enabled`. “Ready” means exactly one visible, enabled, nonsensitive match without an observation error. Multiple matches and sensitive targets fail, including during conditions. Imported inputs are limited to supported ordinary input types or textarea; there is no arbitrary JavaScript step.
+
+`retry` is not a recovery mechanism for an uncertain click. An explicit `loop` can intentionally repeat effects and must be reviewed accordingly. Every macro click has native approval; ordinary navigation/input do not have an additional click-style confirmation.
+
+`wait`는 조건을 반복 관찰하고 `if`는 한 번 관찰합니다. `retry`는 준비 상태만 재시도하며 이미 실행한 효과는 반복하지 않습니다. `loop`는 효과를 의도적으로 반복할 수 있으므로 검토가 필요합니다. 클릭은 매번 승인하고 일반 이동/입력에는 별도 클릭 확인창이 없습니다.
+
+### Bounds / 제한
+
+| Limit | Current default or accepted range |
+| --- | --- |
+| Total replay duration | 120,000 ms |
+| Operations/program nodes | 1,000; observations and loop iterations consume execution operations |
+| Nesting | 16 levels |
+| Step timeout | 1–30,000 ms; click default 30,000 ms, other steps 5,000 ms |
+| Poll interval | 10–5,000 ms; default 100 ms |
+| Retry count | 0–10 additional readiness attempts; default 0 |
+| Retry delay | 0–5,000 ms; default 200 ms |
+| Loop count | 1–100; default 1 |
+| Strings | Selector 2,048, value 4,096, URL 8,192 characters |
+
+Approval and optional healing time count toward budgets. The interpreter validates/detaches the complete program before its first effect and prevents simultaneous replay. Effects are rechecked at dispatch; they are never retried after dispatch. Cancellation/timeouts do not guarantee that an already-dispatched WebView2 script had no effect.
+
+Self-healing requires both `AllowSelfHeal` on the step and a caller-supplied callback. Main supplies no callback or model. A missing selector therefore fails rather than invoking AI.
+
+기본 총 시간은 120초, 작업 예산은 1,000, 중첩은 16입니다. 관찰과 반복 횟수도 작업 예산에 포함됩니다. 승인 대기 역시 제한 시간에 포함되며 self-heal 플래그만 켜도 AI가 작동하지 않습니다.
+
+### Nested JSON example / 중첩 JSON 예제
+
+This schema example requires a controlled fixture page with unique, ordinary `#search` and `#search-button` elements. Replace the illustrative URL with your own fixture. It is not a live-site compatibility test or a reservation workflow.
+
+아래는 스키마 예제입니다. 유일한 일반 입력 요소와 버튼이 있는 테스트 페이지가 필요하며 URL은 자신의 fixture로 바꿔야 합니다. 실제 예약 사이트에서 검증한 매크로가 아닙니다.
 
 ```json
-{
-  "ref": "@12",
-  "tag": "button",
-  "role": "",
-  "text": "19:00",
-  "selector": "button:nth-of-type(3)",
-  "disabled": false
-}
+[
+  {
+    "Kind": "navigate",
+    "Url": "https://example.com/search",
+    "TimeoutMs": 15000
+  },
+  {
+    "Kind": "wait",
+    "Selector": "#search",
+    "Condition": "ready",
+    "TimeoutMs": 10000
+  },
+  {
+    "Kind": "loop",
+    "LoopCount": 2,
+    "Steps": [
+      {
+        "Kind": "if",
+        "Selector": "#search",
+        "Condition": "ready",
+        "Steps": [
+          {
+            "Kind": "retry",
+            "RetryCount": 2,
+            "RetryDelayMs": 200,
+            "Steps": [
+              {
+                "Kind": "input",
+                "Selector": "#search",
+                "Value": "museum",
+                "TimeoutMs": 5000
+              }
+            ]
+          }
+        ],
+        "ElseSteps": [
+          {
+            "Kind": "wait",
+            "Selector": "#search",
+            "Condition": "ready",
+            "TimeoutMs": 5000
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Kind": "click",
+    "Selector": "#search-button",
+    "TimeoutMs": 30000
+  }
+]
 ```
 
-This is deliberately cheaper than repeatedly sending full screenshots to a vision model.
+The loop intentionally repeats input when the branch is ready. Its alternative only waits; it does not retroactively run the other branch. The final click requires native approval.
 
-Sensitive form fields are masked at the extraction boundary. Passwords and payment-like fields never return their value.
+## Foreground watch / 전경 감시
 
-## Macro engine
+`StartWatch` captures the selected WebView, origin, target text, auto-click choice, and replay choice. Changing the checkboxes later does not modify the running watch. Immediate watches start now and end after 30 minutes.
 
-The macro system is semantic rather than coordinate-based.
+`WatchSchedule.TryParse` requires an ISO timestamp with uppercase `T` and timezone `Z` or `±HH:mm`; seconds are optional, and fractional seconds are accepted with seconds. It validates actual dates, start < end, a future end, and an interval no longer than 24 hours. It does not create an OS-scheduled job.
 
-Recorder events are injected into each page with `AddScriptToExecuteOnDocumentCreatedAsync`. The script observes user interaction and reports actions through `window.chrome.webview.postMessage`.
+Every 3 seconds, active processing checks the original schedule and execution gate. Matching is case-sensitive exact text after whitespace normalization. Eligible button/link controls must be enabled, visible, and unobstructed within the viewport, with exactly one candidate. The service does not scroll, refresh, traverse frames, or search shadow roots.
 
-Recorded step types currently include:
+Finding a candidate ends the watch after handling it. Auto-click requests **Click once**, binding the observed selector, source URL, and document identity to that approval. The native service and effect script recheck these tokens and the gate before dispatch. Declining confirmation does not trigger a click or replay. Optional replay occurs only after a successful confirmed watch click. Read-only detection alone does not start a macro.
 
-- `navigate`
-- `click`
-- `input`
+시작 시 원래 탭과 선택 설정을 고정하며 실행 중 체크박스 변경은 반영하지 않습니다. 즉시 감시는 30분, 예약은 시간대가 있는 ISO 형식과 최대 24시간 구간을 요구합니다. 정확한 대소문자 구분 텍스트를 감시하고 발견된 후보가 하나여야 합니다. 자동 클릭 옵션도 수동 승인을 요구하며 클릭 성공 후에만 후속 매크로를 재생합니다.
 
-A future version can add:
+## Vault and delegation / Vault와 외부 AI
 
-- `select`
-- `waitFor`
-- `assert`
-- `branch`
-- `loop`
-- `download`
-- `approval`
-- `delegate`
-- `tool`
+Typed login/address/payment-metadata records live under `Vault/Typed-v1`; DPAPI protects all records, with optional Credential Manager login-secret storage. Payment types have no PAN/security-code/PIN fields. Exact HTTPS-origin fill is native-user initiated, stops recording without restarting it, uses an autocomplete allowlist, and never submits or dispatches change events. See [Security](SECURITY.md) for the full boundary.
 
-### Sensitive-input rule
+The delegate UI enters a task → prepares a filtered prompt → requests native review → opens a visible Gemini/Claude tab → offers explicit Copy task. The user signs in, pastes, and sends manually. The selected reply is shown as untrusted text, not a tool instruction. `FillComposerAsync` exists but is not called by Main.
 
-The recorder rejects values when a field looks like:
+`LocalIntentRouter` recognizes a small set of English/Korean commands. `IAiProvider`, `AiRequest`, `AiResponse`, and `ProviderRegistry` are contracts only; no API/local-model adapter is registered. `ApprovalPolicy` models sensitive actions but does not implement mail, purchase, shell, or Git tools.
 
-- password,
-- card number,
-- CVC/CVV/security code,
-- OTP/one-time-code.
+Vault는 메타데이터 전용 결제 슬롯을 포함한 타입별 저장입니다. 외부 AI는 작업 검토 후 사용자가 직접 복사/붙여넣기/전송합니다. 답변은 신뢰하지 않는 텍스트로만 표시합니다. 공급자/승인 정책 인터페이스가 존재해도 메일·결제·shell·Git 연동이 구현된 것은 아닙니다.
 
-A macro should refer to a vault slot, for example `vault://payment/personal`, rather than storing the real secret in the macro definition.
+## Data and compatibility / 데이터와 호환성
 
-## Foreground Watch
+`AuditLogService` uses `luma.db` with timestamp/category/action/target/detail columns and parameterized inserts. Current call sites log origins, provider names, counts, and action outcomes rather than full form payloads. The database is not encrypted by this service.
 
-`ForegroundWatchService` is the first implementation of the requested visible-only monitor.
+The existing browser profile and audit database remain in their existing locations. Legacy untyped `Vault/*.bin` records are **not loaded, migrated, or deleted** by the typed vault. Retained old files require separate review; an automatic migration workflow is future work. Do not mistake an empty typed slot list for deletion of old vault data.
 
-The current flow is:
+기존 브라우저 프로필과 감사 DB는 유지합니다. 이전 `Vault/*.bin` 파일은 새 Vault가 읽거나 변환하거나 삭제하지 않습니다. 타입별 목록이 비어 있어도 예전 파일이 제거된 것은 아닙니다.
 
-```text
-Luma active?
-  └─ no → do nothing
-  └─ yes
-      active tab visible?
-        └─ no → do nothing
-        └─ yes
-            find enabled interactive element containing target text
-              └─ missing → wait for next tick
-              └─ found → report, optionally click, stop watch
-```
+## Verification and resource limits / 검증과 자원 한계
 
-The first UI uses visible button/link text because it is generic across many sites. Later versions can let the agent convert natural language into a durable condition graph.
+The Windows console harness links the relevant source files and checks interpreter behavior, vault storage/validation, delegate privacy, JSON, and schedule parsing. CI uses locked restore, Release builds, direct DLL test execution, and Node 22. VaultTests exports generated fill scripts through `LUMA_VAULT_TEST_SCRIPT_DIRECTORY`; `node tests/VaultAutofillTests.js <scripts-dir>` runs 17 cases. `node tests/ForegroundWatchTests.js` exercises 35 production-script cases. The final macro-runtime suite has 15 scenarios. Commands are in [README](../README.md#verification).
 
-Example future intent:
+Reported integration results include a zero-warning Release build and passing macro/vault/Credential Manager/privacy/JSON suites. Live smoke confirmed launch, sidebar, Google navigation, a 20-element snapshot, and Ctrl+T. Native window capture showed a blank WebView surface while DOM/accessibility remained available; a composition-capture limitation is a possible explanation, not a confirmed diagnosis.
 
-```text
-"10월 20일 19:00 자리 생기면 예약해"
-```
+The Node tests exercise generated JavaScript with simulated DOM objects. The console fake-host tests do not prove live website, focus-race, vendor composer, or reservation behavior. No startup/working-set/CPU/battery benchmarks exist for the i5 13th-generation/8 GB design target.
 
-Planner output:
+Core DOM automation does not bypass cross-origin iframes, shadow roots, canvas rendering, CAPTCHA, passkeys, OTP, or payment challenges. No always-on model, background watch daemon, code workspace, visual macro editor, or autonomous agent is implemented.
 
-```text
-watch:
-  visible_only: true
-  target: reservation time 19:00
-  date: 2026-10-20
-  when_available:
-    - click time
-    - replay macro: reservation-details
-    - approval: confirm-reservation
-```
-
-## Free-first agent routing
-
-The intended decision ladder is:
-
-```text
-1. Existing deterministic rule
-2. Existing site skill / recorded macro
-3. DOM/accessibility snapshot reasoning
-4. Tiny/on-demand local model (optional)
-5. Visible web-AI delegate (optional)
-6. Paid API provider (optional)
-```
-
-The first repository version implements steps 1-3 structurally and provides interfaces for the later layers.
-
-## Provider abstraction
-
-`IAiProvider` is intentionally small. Providers can later wrap:
-
-- OpenAI API,
-- Anthropic API,
-- Gemini API,
-- OpenRouter,
-- Ollama,
-- LM Studio,
-- any OpenAI-compatible local/server endpoint.
-
-`IExternalAiDelegate` is separate because a visible web-based AI worker has different semantics from an API provider. Delegates must never receive raw vault secrets.
-
-## Local Vault
-
-`SecureVaultService` uses Windows DPAPI with `DataProtectionScope.CurrentUser`.
-
-The current implementation stores an opaque encrypted blob per logical key. File names are SHA-256 hashes of the logical key, so the vault directory does not directly expose site/account labels.
-
-Planned vault domains:
-
-```text
-identity/
-  personal
-  work
-address/
-  home
-  dorm
-payment/
-  personal-visa
-login/
-  example.com/main
-provider/
-  openai
-  anthropic
-  gemini
-```
-
-CVV/CVC is intentionally excluded from persistent storage.
-
-## Audit log
-
-`AuditLogService` creates `%LOCALAPPDATA%\Luma\luma.db` using SQLite.
-
-The first schema records:
-
-- timestamp,
-- category,
-- action,
-- target,
-- non-secret detail.
-
-Raw passwords, payment values, OTP values, cookies, and provider tokens must never be written to the audit database.
-
-## Approval policy
-
-`ApprovalPolicy` separates observation from commitment.
-
-Default no-approval examples:
-
-- read page,
-- navigate,
-- download.
-
-Default approval-required examples:
-
-- send email,
-- create calendar event,
-- confirm reservation,
-- purchase,
-- delete data,
-- Git push,
-- local shell execution.
-
-Because this is a personal browser, the policy can later support user-defined trust rules such as:
-
-```text
-trusted-site + purchase < 30,000 KRW → allow automatic confirmation
-```
-
-but the architecture keeps a visible approval boundary available.
-
-## Future tool system
-
-The long-term agent should not know implementation details for every service. It should see capabilities such as:
-
-```text
-browser.snapshot
-browser.click
-browser.fill
-browser.navigate
-macro.record
-macro.replay
-watch.start
-vault.fillAddress
-vault.fillPayment
-mail.send
-calendar.create
-booking.confirm
-purchase.confirm
-files.read
-files.write
-git.diff
-git.commit
-git.push
-shell.run
-delegate.gemini
-```
-
-Each tool declares:
-
-- permissions,
-- whether approval is required,
-- whether it is safe to replay,
-- what data classes it can access,
-- whether it needs foreground visibility.
-
-## Dev workspace
-
-Development features should be lazy-loaded because Luma targets 8 GB RAM.
-
-When no coding task exists:
-
-- Monaco is not loaded,
-- PowerShell is not running,
-- Git helpers are idle,
-- no coding model is resident.
-
-When a coding task starts, a future `DevWorkspace` can attach:
-
-```text
-workspace
-├─ Monaco editor
-├─ terminal (PowerShell)
-├─ Git status/diff
-├─ preview tab
-└─ coding-agent tools
-```
-
-and unload it when the task ends.
-
-## Resource strategy
-
-### Always alive
-
-- WinUI shell
-- WebView2 tabs the user keeps open
-- small SQLite connection only when writing
-- lightweight timers for foreground watch
-
-### On demand
-
-- model provider calls
-- screenshots
-- local models
-- dev workspace
-- shell processes
-- Git operations
-
-### Explicitly avoided
-
-- always-on large local LLM,
-- bundled second Chromium engine,
-- screenshot-per-step automation,
-- coordinate-only macros,
-- background reservation monitors hidden from the user.
+검증은 콘솔/생성 JS 회귀 테스트와 제한된 화면·DOM 스모크입니다. 실제 공급자나 예약 사이트 자동화 완료를 증명하지 않습니다. i5 13세대/8 GB 설계 목표의 하드웨어 벤치마크는 없으며 인증·iframe·shadow DOM·canvas를 우회하지 않습니다.
