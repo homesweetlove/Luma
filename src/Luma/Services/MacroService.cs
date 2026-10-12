@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Luma.Models;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.Web.WebView2.Core;
 
 namespace Luma.Services;
 
@@ -127,7 +128,7 @@ public sealed class MacroService
 
         var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        void Completed(WebView2 sender, Microsoft.UI.Xaml.Controls.CoreWebView2NavigationCompletedEventArgs args)
+        void Completed(WebView2 sender, CoreWebView2NavigationCompletedEventArgs args)
         {
             sender.NavigationCompleted -= Completed;
             tcs.TrySetResult();
