@@ -49,7 +49,7 @@ public static class BrowserScripts
     );
     const text = sensitive
       ? '[sensitive]'
-      : (el.innerText || el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.value || '').trim().slice(0, 240);
+      : (el.innerText || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '').trim().slice(0, 240);
 
     return {
       ref: `@${index + 1}`,
@@ -103,6 +103,7 @@ public static class BrowserScripts
   };
 
   document.addEventListener('click', (event) => {
+    if (!event.isTrusted) return;
     const el = event.target?.closest?.('a,button,input,select,textarea,[role="button"],[role="link"],[contenteditable="true"]');
     if (!el) return;
     window.chrome?.webview?.postMessage({
@@ -113,6 +114,7 @@ public static class BrowserScripts
   }, true);
 
   document.addEventListener('change', (event) => {
+    if (!event.isTrusted) return;
     const el = event.target;
     if (!el || !('value' in el) || isSensitive(el)) return;
     window.chrome?.webview?.postMessage({

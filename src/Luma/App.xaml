@@ -8,9 +8,57 @@
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <SolidColorBrush x:Key="LumaPanelBrush" Color="#F7F7F8" />
-            <SolidColorBrush x:Key="LumaBorderBrush" Color="#18000000" />
-            <SolidColorBrush x:Key="LumaAccentBrush" Color="#2563EB" />
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="LumaPanelBrush" Color="#F5F5F7" />
+                    <SolidColorBrush x:Key="LumaBorderBrush" Color="#24000000" />
+                    <SolidColorBrush x:Key="LumaAccentBrush" Color="#0067C0" />
+                    <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="#59595F" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="LumaPanelBrush" Color="#242426" />
+                    <SolidColorBrush x:Key="LumaBorderBrush" Color="#30FFFFFF" />
+                    <SolidColorBrush x:Key="LumaAccentBrush" Color="#60CDFF" />
+                    <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="#C3C3C8" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="LumaPanelBrush" Color="#242426" />
+                    <SolidColorBrush x:Key="LumaBorderBrush" Color="#30FFFFFF" />
+                    <SolidColorBrush x:Key="LumaAccentBrush" Color="#60CDFF" />
+                    <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="#C3C3C8" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="HighContrast">
+                    <SolidColorBrush x:Key="LumaPanelBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="LumaBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                    <SolidColorBrush x:Key="LumaAccentBrush" Color="{ThemeResource SystemColorHighlightColor}" />
+                    <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Keep native templates and interaction states; only tighten spacing. -->
+            <Style x:Key="LumaToolbarButtonStyle" TargetType="Button">
+                <Setter Property="Width" Value="32" />
+                <Setter Property="Height" Value="32" />
+                <Setter Property="MinWidth" Value="32" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="CornerRadius" Value="6" />
+            </Style>
+            <Style x:Key="LumaToolButtonStyle" TargetType="Button">
+                <Setter Property="MinHeight" Value="32" />
+                <Setter Property="Padding" Value="10,4" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="CornerRadius" Value="6" />
+            </Style>
+            <Style x:Key="LumaSectionHeaderStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+            </Style>
+            <Style x:Key="LumaStatusTextStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSdkBootstrapInitialize>false</WindowsAppSdkBootstrapInitialize>
+    <WindowsAppSDKDeploymentManagerInitialize>false</WindowsAppSDKDeploymentManagerInitialize>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <Compile Include="../../src/Luma/Models/*.cs" Link="Models/%(Filename)%(Extension)" />
+    <Compile Include="../../src/Luma/Services/MacroRuntime.cs" Link="Services/MacroRuntime.cs" />
+    <Compile Include="../../src/Luma/Services/MacroService.cs" Link="Services/MacroService.cs" />
+    <Compile Include="../../src/Luma/Services/ForegroundWatchService.cs" Link="Services/ForegroundWatchService.cs" />
+    <Compile Include="../../src/Luma/Services/SecureVaultService.cs" Link="Services/SecureVaultService.cs" />
+    <Compile Include="../../src/Luma/Services/CredentialManagerStore.cs" Link="Services/CredentialManagerStore.cs" />
+    <Compile Include="../../src/Luma/Services/VaultAutofillService.cs" Link="Services/VaultAutofillService.cs" />
+    <Compile Include="../../src/Luma/Services/DelegatePrivacy.cs" Link="Services/DelegatePrivacy.cs" />
+    <Compile Include="../../src/Luma/Services/WatchSchedule.cs" Link="Services/WatchSchedule.cs" />
+    <Compile Include="../AutomationRuntimeTests.cs" Link="AutomationRuntimeTests.cs" />
+    <Compile Include="../VaultTests.cs" Link="VaultTests.cs" />
+  </ItemGroup>
+</Project>

@@ -29,6 +29,20 @@ public sealed class MacroStep
     public string? Selector { get; set; }
     public string? Value { get; set; }
     public string? Url { get; set; }
+    private int? _timeoutMs;
+    public int TimeoutMs { get => _timeoutMs ?? (Kind == "click" ? 30000 : 5000); set => _timeoutMs = value; }
+    public int PollIntervalMs { get; set; } = 100;
+    public int RetryCount { get; set; }
+    public int RetryDelayMs { get; set; } = 200;
+    public int LoopCount { get; set; } = 1;
+    public string Condition { get; set; } = "ready";
+    public List<MacroStep> Steps { get; set; } = [];
+    public List<MacroStep> ElseSteps { get; set; } = [];
+    public bool AllowSelfHeal { get; set; }
+    [JsonIgnore]
+    public string? ExpectedSource { get; set; }
+    [JsonIgnore]
+    public string? ExpectedDocumentId { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
 
     public override string ToString()
@@ -43,7 +57,13 @@ public sealed class MacroStep
     }
 }
 
-public sealed record WatchResult(bool Found, bool Clicked, string? MatchedText, string? Selector);
+public sealed record WatchResult(bool Found, bool Clicked, string? MatchedText, string? Selector)
+{
+    public int MatchCount { get; init; }
+    public string? Error { get; init; }
+    public string? Source { get; init; }
+    public string? DocumentId { get; init; }
+}
 
 public enum SensitiveAction
 {

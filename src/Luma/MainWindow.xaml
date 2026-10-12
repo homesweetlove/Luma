@@ -2,154 +2,195 @@
     x:Class="Luma.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    mc:Ignorable="d"
     Title="Luma">
-
     <Grid x:Name="RootGrid" Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="L" Modifiers="Control" Invoked="FocusAddress_Invoked" />
+            <KeyboardAccelerator Key="T" Modifiers="Control" Invoked="NewTab_Invoked" />
+            <KeyboardAccelerator Key="W" Modifiers="Control" Invoked="CloseTab_Invoked" />
+            <KeyboardAccelerator Key="F5" Invoked="Reload_Invoked" />
+        </Grid.KeyboardAccelerators>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border
-            Grid.Row="0"
-            Padding="10,8"
-            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-            BorderBrush="{StaticResource LumaBorderBrush}"
-            BorderThickness="0,0,0,1">
-            <Grid ColumnSpacing="8">
+        <Border Padding="10,6" Background="{ThemeResource LumaPanelBrush}"
+                BorderBrush="{ThemeResource LumaBorderBrush}" BorderThickness="0,0,0,1">
+            <Grid ColumnSpacing="6">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-
-                <Button x:Name="BackButton" Grid.Column="0" Width="36" Height="34" Click="BackButton_Click" ToolTipService.ToolTip="Back">
-                    <SymbolIcon Symbol="Back" />
-                </Button>
-                <Button x:Name="ForwardButton" Grid.Column="1" Width="36" Height="34" Click="ForwardButton_Click" ToolTipService.ToolTip="Forward">
-                    <SymbolIcon Symbol="Forward" />
-                </Button>
-                <Button x:Name="ReloadButton" Grid.Column="2" Width="36" Height="34" Click="ReloadButton_Click" ToolTipService.ToolTip="Reload">
-                    <SymbolIcon Symbol="Refresh" />
-                </Button>
-                <Button x:Name="HomeButton" Grid.Column="3" Width="36" Height="34" Click="HomeButton_Click" ToolTipService.ToolTip="Home">
-                    <SymbolIcon Symbol="Home" />
-                </Button>
-
-                <Border
-                    Grid.Column="4"
-                    Height="36"
-                    CornerRadius="12"
-                    Background="{ThemeResource ControlFillColorDefaultBrush}"
-                    BorderBrush="{StaticResource LumaBorderBrush}"
-                    BorderThickness="1">
-                    <TextBox
-                        x:Name="AddressBox"
-                        BorderThickness="0"
-                        Background="Transparent"
-                        PlaceholderText="Search or enter website"
-                        VerticalContentAlignment="Center"
-                        KeyDown="AddressBox_KeyDown" />
-                </Border>
-
-                <Button x:Name="GoButton" Grid.Column="5" Height="34" Padding="12,0" Click="GoButton_Click" Content="Go" />
-                <Button x:Name="SnapshotButton" Grid.Column="6" Height="34" Padding="12,0" Click="SnapshotButton_Click" Content="Snapshot" />
-                <Button x:Name="AgentToggleButton" Grid.Column="7" Width="38" Height="34" Click="AgentToggleButton_Click" ToolTipService.ToolTip="Toggle Luma Agent">
-                    <SymbolIcon Symbol="Message" />
-                </Button>
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <Button x:Name="BackButton" Style="{StaticResource LumaToolbarButtonStyle}"
+                            Click="BackButton_Click" ToolTipService.ToolTip="Back" AutomationProperties.Name="Back">
+                        <SymbolIcon Symbol="Back" />
+                    </Button>
+                    <Button x:Name="ForwardButton" Style="{StaticResource LumaToolbarButtonStyle}"
+                            Click="ForwardButton_Click" ToolTipService.ToolTip="Forward" AutomationProperties.Name="Forward">
+                        <SymbolIcon Symbol="Forward" />
+                    </Button>
+                    <Button x:Name="ReloadButton" Style="{StaticResource LumaToolbarButtonStyle}"
+                            Click="ReloadButton_Click" ToolTipService.ToolTip="Reload (F5)" AutomationProperties.Name="Reload">
+                        <SymbolIcon Symbol="Refresh" />
+                    </Button>
+                    <Button x:Name="HomeButton" Style="{StaticResource LumaToolbarButtonStyle}"
+                            Click="HomeButton_Click" ToolTipService.ToolTip="Home" AutomationProperties.Name="Home">
+                        <SymbolIcon Symbol="Home" />
+                    </Button>
+                </StackPanel>
+                <TextBox x:Name="AddressBox" Grid.Column="1" MinHeight="32" Padding="12,4"
+                         CornerRadius="8" VerticalContentAlignment="Center"
+                         PlaceholderText="Search or enter website" AutomationProperties.Name="Search or enter website"
+                         ToolTipService.ToolTip="Search or enter website (Ctrl+L)" KeyDown="AddressBox_KeyDown" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+                    <Button x:Name="GoButton" Style="{StaticResource LumaToolbarButtonStyle}"
+                            Click="GoButton_Click" ToolTipService.ToolTip="Go" AutomationProperties.Name="Go">
+                        <SymbolIcon Symbol="Go" />
+                    </Button>
+                    <Button x:Name="SnapshotButton" Style="{StaticResource LumaToolbarButtonStyle}"
+                            Click="SnapshotButton_Click" ToolTipService.ToolTip="Capture page snapshot" AutomationProperties.Name="Capture page snapshot">
+                        <SymbolIcon Symbol="Camera" />
+                    </Button>
+                    <Button x:Name="AgentToggleButton" Style="{StaticResource LumaToolbarButtonStyle}"
+                            Click="AgentToggleButton_Click" ToolTipService.ToolTip="Toggle Luma Agent" AutomationProperties.Name="Toggle Luma Agent">
+                        <SymbolIcon Symbol="Message" />
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
-        <Grid Grid.Row="1">
+        <ProgressBar x:Name="NavigationProgress" Grid.Row="1" Height="2" IsIndeterminate="True"
+                     Visibility="Collapsed" Foreground="{ThemeResource LumaAccentBrush}"
+                     AutomationProperties.Name="Page loading" />
+
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition x:Name="AgentColumn" Width="340" />
+                <ColumnDefinition x:Name="AgentColumn" Width="0" />
             </Grid.ColumnDefinitions>
+            <TabView x:Name="BrowserTabs" TabWidthMode="Compact"
+                     IsAddTabButtonVisible="True" AutomationProperties.Name="Browser tabs"
+                     AddTabButtonClick="BrowserTabs_AddTabButtonClick"
+                     TabCloseRequested="BrowserTabs_TabCloseRequested"
+                     SelectionChanged="BrowserTabs_SelectionChanged" />
 
-            <TabView
-                x:Name="BrowserTabs"
-                Grid.Column="0"
-                IsAddTabButtonVisible="True"
-                AddTabButtonClick="BrowserTabs_AddTabButtonClick"
-                TabCloseRequested="BrowserTabs_TabCloseRequested"
-                SelectionChanged="BrowserTabs_SelectionChanged" />
-
-            <Border
-                x:Name="AgentPanel"
-                Grid.Column="1"
-                Padding="14"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                BorderBrush="{StaticResource LumaBorderBrush}"
-                BorderThickness="1,0,0,0">
-                <Grid RowSpacing="12">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <StackPanel Grid.Row="0" Spacing="4">
-                        <TextBlock Text="Luma Agent" FontSize="20" FontWeight="SemiBold" />
-                        <TextBlock Text="Free-first · foreground-aware · local-first" Opacity="0.65" FontSize="12" />
-                        <TextBlock x:Name="AgentStatusText" Text="Ready" TextWrapping="Wrap" Margin="0,4,0,0" />
-                    </StackPanel>
-
-                    <Grid Grid.Row="1" ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Button x:Name="RecordMacroButton" Grid.Column="0" Click="RecordMacroButton_Click" Content="● Record" />
-                        <Button x:Name="ReplayMacroButton" Grid.Column="1" Click="ReplayMacroButton_Click" Content="Replay" />
-                    </Grid>
-
-                    <StackPanel Grid.Row="2" Spacing="8">
-                        <TextBlock Text="Foreground Watch" FontWeight="SemiBold" />
-                        <TextBox x:Name="WatchTextBox" PlaceholderText="Text to watch for, e.g. 19:00" />
+            <Border x:Name="AgentPanel" Grid.Column="1" Visibility="Collapsed"
+                    Background="{ThemeResource LumaPanelBrush}"
+                    BorderBrush="{ThemeResource LumaBorderBrush}" BorderThickness="1,0,0,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              HorizontalScrollMode="Disabled">
+                    <StackPanel Padding="14" Spacing="16">
                         <Grid ColumnSpacing="8">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <ToggleButton x:Name="WatchToggleButton" Grid.Column="0" Click="WatchToggleButton_Click" Content="Start watching" />
-                            <CheckBox x:Name="AutoClickCheckBox" Grid.Column="1" Content="Auto-click" VerticalAlignment="Center" />
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="Luma Agent" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock Text="Local tools · foreground watch" FontSize="12"
+                                           Foreground="{ThemeResource LumaSecondaryTextBrush}" />
+                            </StackPanel>
+                            <Button x:Name="VaultButton" Grid.Column="1" VerticalAlignment="Center"
+                                    Style="{StaticResource LumaToolbarButtonStyle}" Click="VaultButton_Click"
+                                    ToolTipService.ToolTip="Open secure vault" AutomationProperties.Name="Open secure vault">
+                                <SymbolIcon Symbol="Permissions" />
+                            </Button>
                         </Grid>
-                        <TextBlock Text="Runs only while Luma is active and this tab is selected." FontSize="11" Opacity="0.6" TextWrapping="Wrap" />
+                        <TextBlock x:Name="AgentStatusText" Text="Ready" Style="{StaticResource LumaStatusTextStyle}" />
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="DELEGATE" Style="{StaticResource LumaSectionHeaderStyle}" />
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="DelegateGeminiButton" Content="Gemini" HorizontalAlignment="Stretch"
+                                        Style="{StaticResource LumaToolButtonStyle}" Click="DelegateGeminiButton_Click"
+                                        ToolTipService.ToolTip="Delegate to Gemini" AutomationProperties.Name="Delegate to Gemini" />
+                                <Button x:Name="DelegateClaudeButton" Grid.Column="1" Content="Claude" HorizontalAlignment="Stretch"
+                                        Style="{StaticResource LumaToolButtonStyle}" Click="DelegateClaudeButton_Click"
+                                        ToolTipService.ToolTip="Delegate to Claude" AutomationProperties.Name="Delegate to Claude" />
+                            </Grid>
+                            <Button x:Name="ReadDelegateButton" Content="Read selected reply" HorizontalAlignment="Stretch"
+                                    Style="{StaticResource LumaToolButtonStyle}" Click="ReadDelegateButton_Click"
+                                    ToolTipService.ToolTip="Read the selected delegate reply" AutomationProperties.Name="Read selected reply" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="MACROS" Style="{StaticResource LumaSectionHeaderStyle}" />
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="RecordMacroButton" Content="● Record" Click="RecordMacroButton_Click"
+                                        Style="{StaticResource LumaToolButtonStyle}" HorizontalAlignment="Stretch" />
+                                <Button x:Name="ReplayMacroButton" Grid.Column="1" Content="Replay" Click="ReplayMacroButton_Click"
+                                        Style="{StaticResource LumaToolButtonStyle}" HorizontalAlignment="Stretch" />
+                            </Grid>
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="ImportMacroButton" Content="Import" Click="ImportMacroButton_Click"
+                                        Style="{StaticResource LumaToolButtonStyle}" HorizontalAlignment="Stretch" />
+                                <Button x:Name="ExportMacroButton" Grid.Column="1" Content="Export" Click="ExportMacroButton_Click"
+                                        Style="{StaticResource LumaToolButtonStyle}" HorizontalAlignment="Stretch" />
+                            </Grid>
+                            <TextBlock x:Name="MacroSummaryText" Text="No macro recorded" FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{ThemeResource LumaSecondaryTextBrush}" />
+                            <ListView x:Name="MacroStepsList" MaxHeight="160" SelectionMode="None"
+                                      ScrollViewer.VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Recorded macro steps" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="FOREGROUND WATCH" Style="{StaticResource LumaSectionHeaderStyle}" />
+                            <TextBox x:Name="WatchTextBox" PlaceholderText="Text to watch for, e.g. 19:00"
+                                     AutomationProperties.Name="Text to watch for" />
+                            <ToggleButton x:Name="WatchToggleButton" Click="WatchToggleButton_Click" Content="Start watching"
+                                          HorizontalAlignment="Stretch" MinHeight="32" />
+                            <CheckBox x:Name="AutoClickCheckBox" Content="Auto-click when found" />
+                            <TextBox x:Name="WatchStartBox" Header="Start (ISO datetime)"
+                                     PlaceholderText="2026-10-12T19:00:00+09:00" AutomationProperties.Name="Watch start ISO datetime" />
+                            <TextBox x:Name="WatchEndBox" Header="End (ISO datetime)"
+                                     PlaceholderText="2026-10-12T20:00:00+09:00" AutomationProperties.Name="Watch end ISO datetime" />
+                            <CheckBox x:Name="ReplayAfterWatchCheckBox" Content="Replay macro when found" />
+                            <Button x:Name="WatchScheduleButton" Content="Schedule watch" Click="WatchScheduleButton_Click"
+                                    Style="{StaticResource LumaToolButtonStyle}" HorizontalAlignment="Stretch" />
+                            <TextBlock Text="Runs while Luma is active and this tab is selected." FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{ThemeResource LumaSecondaryTextBrush}" />
+                            <Button x:Name="CancelAutomationButton" Content="Cancel automation" Click="CancelAutomationButton_Click"
+                                    Style="{StaticResource LumaToolButtonStyle}" HorizontalAlignment="Stretch" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="ASK LUMA" Style="{StaticResource LumaSectionHeaderStyle}" />
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="CommandBox" PlaceholderText="Ask Luma…" AcceptsReturn="False"
+                                         KeyDown="CommandBox_KeyDown" AutomationProperties.Name="Ask Luma" />
+                                <Button x:Name="SendCommandButton" Grid.Column="1" Content="Send" Click="SendCommandButton_Click"
+                                        Style="{StaticResource LumaToolButtonStyle}" />
+                            </Grid>
+                        </StackPanel>
                     </StackPanel>
-
-                    <StackPanel Grid.Row="3" Spacing="6">
-                        <TextBlock Text="Recorded steps" FontWeight="SemiBold" />
-                        <TextBlock x:Name="MacroSummaryText" Text="No macro recorded" FontSize="12" Opacity="0.65" />
-                    </StackPanel>
-
-                    <ListView x:Name="MacroStepsList" Grid.Row="4" SelectionMode="None" />
-
-                    <Grid Grid.Row="5" ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox
-                            x:Name="CommandBox"
-                            Grid.Column="0"
-                            PlaceholderText="Ask Luma…"
-                            AcceptsReturn="False"
-                            KeyDown="CommandBox_KeyDown" />
-                        <Button x:Name="SendCommandButton" Grid.Column="1" Click="SendCommandButton_Click" Content="Send" />
-                    </Grid>
-                </Grid>
+                </ScrollViewer>
             </Border>
         </Grid>
+
+        <Border Grid.Row="3" Padding="12,5" Background="{ThemeResource LumaPanelBrush}"
+                BorderBrush="{ThemeResource LumaBorderBrush}" BorderThickness="0,1,0,0">
+            <TextBlock x:Name="ForegroundStatusText" Text="Ready" Style="{StaticResource LumaStatusTextStyle}" />
+        </Border>
     </Grid>
 </Window>
