@@ -11,7 +11,6 @@ namespace Luma;
 public sealed partial class MainWindow
 {
     private HomeDashboardService? _homeDashboard;
-    private readonly HashSet<WebView2> _homePendingViews = [];
     private readonly HashSet<CoreWebView2> _homeConfiguredCores = [];
     private bool _glassHomeInitialized;
     private bool _initialHomeApplied;
@@ -59,18 +58,24 @@ public sealed partial class MainWindow
 
     private async Task OpenInitialHomeAsync()
     {
-        for (var attempt = 0; attempt < 60 && !_closing; attempt++)
+        for (var attempt = 0; attempt < 80 && !_closing; attempt++)
         {
             var view = ActiveWebView;
             if (view?.CoreWebView2 is { } core)
             {
                 ConfigureHomeCore(view, core);
-                if (!_initialHomeApplied && IsDefaultGoogleHome(core.Source))
+                if (_homeDashboard?.IsHome(core.Source) == true)
+                {
+                    _initialHomeApplied = true;
+                    return;
+                }
+
+                if (!_initialHomeApplied && !_loadingTabs.Contains(view) && IsDefaultGoogleHome(core.Source))
                 {
                     _initialHomeApplied = true;
                     core.Navigate(HomeDashboardService.HomeUrl);
+                    return;
                 }
-                return;
             }
             await Task.Delay(100);
         }
@@ -78,7 +83,7 @@ public sealed partial class MainWindow
 
     private static bool IsDefaultGoogleHome(string? source)
     {
-        if (string.IsNullOrWhiteSpace(source)) return true;
+        if (string.IsNullOrWhiteSpace(source)) return false;
         return Uri.TryCreate(source, UriKind.Absolute, out var uri) &&
                uri.Scheme == "https" &&
                string.Equals(uri.Host, "www.google.com", StringComparison.OrdinalIgnoreCase) &&
@@ -93,20 +98,8 @@ public sealed partial class MainWindow
 
     private void AttachHomeBehavior(WebView2 view)
     {
-        if (_homeDashboard is null) return;
-        if (view.CoreWebView2 is { } core)
-        {
-            ConfigureHomeCore(view, core);
-            return;
-        }
-
-        if (!_homePendingViews.Add(view)) return;
-        view.CoreWebView2InitializationCompleted += (_, args) =>
-        {
-            _homePendingViews.Remove(view);
-            if (args.IsSuccess && view.CoreWebView2 is { } initializedCore)
-                ConfigureHomeCore(view, initializedCore);
-        };
+        if (_homeDashboard is null || view.CoreWebView2 is not { } core) return;
+        ConfigureHomeCore(view, core);
     }
 
     private void ConfigureHomeCore(WebView2 view, CoreWebView2 core)
@@ -227,6 +220,16 @@ public sealed partial class MainWindow
         }
     }
 
+    private async Task<WebView2> OpenGlassHomeTabAsync()
+    {
+        // CreateTabAsync guarantees CoreWebView2 is ready before it returns. Start from a
+        // normal HTTPS page, attach the local virtual-host mapping, then replace it with Home.
+        var view = await CreateTabAsync("https://www.google.com");
+        AttachHomeBehavior(view);
+        view.CoreWebView2?.Navigate(HomeDashboardService.HomeUrl);
+        return view;
+    }
+
     private void GlassHomeButton_Click(object sender, RoutedEventArgs e)
     {
         if (ActiveWebView is not { } view || view.CoreWebView2 is not { } core) return;
@@ -235,7 +238,7 @@ public sealed partial class MainWindow
     }
 
     private async void GlassBrowserTabs_AddTabButtonClick(TabView sender, object args) =>
-        await RunUiAsync(async () => { await CreateTabAsync(HomeDashboardService.HomeUrl); });
+        await RunUiAsync(async () => { await OpenGlassHomeTabAsync(); });
 
     private async void GlassBrowserTabs_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
@@ -252,13 +255,13 @@ public sealed partial class MainWindow
 
         sender.TabItems.Remove(tab);
         if (sender.TabItems.Count == 0)
-            await RunUiAsync(async () => { await CreateTabAsync(HomeDashboardService.HomeUrl); });
+            await RunUiAsync(async () => { await OpenGlassHomeTabAsync(); });
     }
 
     private async void GlassNewTab_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
         args.Handled = true;
-        await RunUiAsync(async () => { await CreateTabAsync(HomeDashboardService.HomeUrl); });
+        await RunUiAsync(async () => { await OpenGlassHomeTabAsync(); });
     }
 
     private async void GlassCloseTab_Invoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
@@ -277,6 +280,6 @@ public sealed partial class MainWindow
 
         BrowserTabs.TabItems.Remove(tab);
         if (BrowserTabs.TabItems.Count == 0)
-            await RunUiAsync(async () => { await CreateTabAsync(HomeDashboardService.HomeUrl); });
+            await RunUiAsync(async () => { await OpenGlassHomeTabAsync(); });
     }
 }
