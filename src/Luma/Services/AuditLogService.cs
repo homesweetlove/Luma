@@ -47,4 +47,33 @@ VALUES($createdAt, $category, $action, $target, $detail);
         command.Parameters.AddWithValue("$detail", (object?)detail ?? DBNull.Value);
         await command.ExecuteNonQueryAsync();
     }
+
+    public async Task<IReadOnlyList<string>> GetRecentNavigationTargetsAsync(int limit = 6)
+    {
+        limit = Math.Clamp(limit, 1, 20);
+        await using var connection = new SqliteConnection($"Data Source={_databasePath}");
+        await connection.OpenAsync();
+        var command = connection.CreateCommand();
+        command.CommandText = """
+SELECT target
+FROM audit_log
+WHERE category = 'browser'
+  AND action = 'navigate'
+  AND target IS NOT NULL
+  AND target <> 'https://luma.local'
+GROUP BY target
+ORDER BY MAX(id) DESC
+LIMIT $limit;
+""";
+        command.Parameters.AddWithValue("$limit", limit);
+
+        var result = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            if (!reader.IsDBNull(0) && reader.GetString(0) is { Length: > 0 } value)
+                result.Add(value);
+        }
+        return result;
+    }
 }

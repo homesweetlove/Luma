@@ -10,44 +10,51 @@
 
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="LumaPanelBrush" Color="#F5F5F7" />
-                    <SolidColorBrush x:Key="LumaBorderBrush" Color="#24000000" />
-                    <SolidColorBrush x:Key="LumaAccentBrush" Color="#0067C0" />
-                    <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="#59595F" />
+                    <SolidColorBrush x:Key="LumaPanelBrush" Color="#F2F8F8FA" />
+                    <SolidColorBrush x:Key="LumaBorderBrush" Color="#26000000" />
+                    <SolidColorBrush x:Key="LumaAccentBrush" Color="#6878F5" />
+                    <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="#65666F" />
+                    <SolidColorBrush x:Key="LumaGlassBrush" Color="#B8FFFFFF" />
+                    <SolidColorBrush x:Key="LumaGlassBorderBrush" Color="#80FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="LumaPanelBrush" Color="#242426" />
-                    <SolidColorBrush x:Key="LumaBorderBrush" Color="#30FFFFFF" />
-                    <SolidColorBrush x:Key="LumaAccentBrush" Color="#60CDFF" />
-                    <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="#C3C3C8" />
+                    <SolidColorBrush x:Key="LumaPanelBrush" Color="#E8212228" />
+                    <SolidColorBrush x:Key="LumaBorderBrush" Color="#32FFFFFF" />
+                    <SolidColorBrush x:Key="LumaAccentBrush" Color="#9CA7FF" />
+                    <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="#BFC1CA" />
+                    <SolidColorBrush x:Key="LumaGlassBrush" Color="#A81D1F26" />
+                    <SolidColorBrush x:Key="LumaGlassBorderBrush" Color="#24FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Default">
-                    <SolidColorBrush x:Key="LumaPanelBrush" Color="#242426" />
-                    <SolidColorBrush x:Key="LumaBorderBrush" Color="#30FFFFFF" />
-                    <SolidColorBrush x:Key="LumaAccentBrush" Color="#60CDFF" />
-                    <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="#C3C3C8" />
+                    <SolidColorBrush x:Key="LumaPanelBrush" Color="#E8212228" />
+                    <SolidColorBrush x:Key="LumaBorderBrush" Color="#32FFFFFF" />
+                    <SolidColorBrush x:Key="LumaAccentBrush" Color="#9CA7FF" />
+                    <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="#BFC1CA" />
+                    <SolidColorBrush x:Key="LumaGlassBrush" Color="#A81D1F26" />
+                    <SolidColorBrush x:Key="LumaGlassBorderBrush" Color="#24FFFFFF" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="HighContrast">
                     <SolidColorBrush x:Key="LumaPanelBrush" Color="{ThemeResource SystemColorWindowColor}" />
                     <SolidColorBrush x:Key="LumaBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
                     <SolidColorBrush x:Key="LumaAccentBrush" Color="{ThemeResource SystemColorHighlightColor}" />
                     <SolidColorBrush x:Key="LumaSecondaryTextBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
+                    <SolidColorBrush x:Key="LumaGlassBrush" Color="{ThemeResource SystemColorWindowColor}" />
+                    <SolidColorBrush x:Key="LumaGlassBorderBrush" Color="{ThemeResource SystemColorWindowTextColor}" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
-            <!-- Keep native templates and interaction states; only tighten spacing. -->
             <Style x:Key="LumaToolbarButtonStyle" TargetType="Button">
-                <Setter Property="Width" Value="32" />
-                <Setter Property="Height" Value="32" />
-                <Setter Property="MinWidth" Value="32" />
+                <Setter Property="Width" Value="34" />
+                <Setter Property="Height" Value="34" />
+                <Setter Property="MinWidth" Value="34" />
                 <Setter Property="Padding" Value="0" />
-                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="CornerRadius" Value="10" />
             </Style>
             <Style x:Key="LumaToolButtonStyle" TargetType="Button">
-                <Setter Property="MinHeight" Value="32" />
-                <Setter Property="Padding" Value="10,4" />
+                <Setter Property="MinHeight" Value="34" />
+                <Setter Property="Padding" Value="11,5" />
                 <Setter Property="FontSize" Value="12" />
-                <Setter Property="CornerRadius" Value="6" />
+                <Setter Property="CornerRadius" Value="10" />
             </Style>
             <Style x:Key="LumaSectionHeaderStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="12" />
