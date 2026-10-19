@@ -121,7 +121,8 @@ public sealed partial class MainWindow
 
     private async Task HandleHomeMessageAsync(WebView2 view, CoreWebView2 core, CoreWebView2WebMessageReceivedEventArgs args)
     {
-        if (_homeDashboard is null || !_homeDashboard.IsHome(core.Source) ||
+        if (_homeDashboard is null || !ReferenceEquals(view, ActiveWebView) ||
+            !CanExecute(view) || !_homeDashboard.IsHome(core.Source) ||
             !string.Equals(OriginOf(args.Source), $"https://{HomeDashboardService.HostName}", StringComparison.OrdinalIgnoreCase))
             return;
 
@@ -131,7 +132,8 @@ public sealed partial class MainWindow
             using var document = JsonDocument.Parse(args.WebMessageAsJson);
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object ||
-                !root.TryGetProperty("kind", out var kind) || kind.GetString() != "luma-home" ||
+                !root.TryGetProperty("kind", out var kind) || kind.ValueKind != JsonValueKind.String ||
+                kind.GetString() != "luma-home" ||
                 !root.TryGetProperty("action", out var actionProperty) || actionProperty.ValueKind != JsonValueKind.String)
                 return;
             action = actionProperty.GetString();
@@ -173,9 +175,12 @@ public sealed partial class MainWindow
                 CommandBox.Focus(FocusState.Keyboard);
                 break;
             case "stop":
+                var hadPending = _automationCancellation is not null;
                 _automationCancellation?.Cancel();
                 StopRecording();
-                StopWatch("Automation stopped from Home.");
+                StopWatch(hadPending
+                    ? "Cancellation requested; an already dispatched action may still complete."
+                    : "Recording and Watch stopped from Home.");
                 await HydrateHomeAsync(view);
                 break;
         }
@@ -250,6 +255,7 @@ public sealed partial class MainWindow
             if (_recordingTab == webView) StopRecording();
             _automationCancellation?.Cancel();
             _loadingTabs.Remove(webView);
+            if (webView.CoreWebView2 is { } configuredCore) _homeConfiguredCores.Remove(configuredCore);
             webView.Close();
         }
 
@@ -275,6 +281,7 @@ public sealed partial class MainWindow
             if (_recordingTab == view) StopRecording();
             _automationCancellation?.Cancel();
             _loadingTabs.Remove(view);
+            if (view.CoreWebView2 is { } configuredCore) _homeConfiguredCores.Remove(configuredCore);
             view.Close();
         }
 
