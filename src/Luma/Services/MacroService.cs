@@ -56,10 +56,37 @@ public sealed class MacroService
     public string ExportJson()
     {
         var validated = new MacroRuntime(new ValidationHost()).ValidateSteps(_steps);
+        // Export and SaveAsync both write plaintext. Refuse data that could include
+        // user input or credentials instead of silently creating a sensitive file.
+        EnsureSafeToExport(validated);
         var json = JsonSerializer.Serialize(validated, MacroJsonOptions);
         if (Encoding.UTF8.GetByteCount(json) > MaxJsonBytes)
             throw new MacroExecutionException("export-too-large", "Macro JSON is limited to 1 MiB.");
         return json;
+    }
+
+    /// <summary>Automatic recording never persists URL userinfo, query strings or fragments.</summary>
+    public static bool IsRecordableNavigationUrl(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+        uri.Scheme is "https" or "http" &&
+        string.IsNullOrEmpty(uri.UserInfo) &&
+        string.IsNullOrEmpty(uri.Query) &&
+        string.IsNullOrEmpty(uri.Fragment) &&
+        !url!.Any(char.IsControl);
+
+    private static void EnsureSafeToExport(IEnumerable<MacroStep> steps)
+    {
+        foreach (var step in steps)
+        {
+            if (step.Kind == "input" && !string.IsNullOrEmpty(step.Value))
+                throw new MacroExecutionException("unsafe-export",
+                    "Macro input values may contain personal data. Remove them before exporting or saving plaintext JSON.");
+            if (step.Kind == "navigate" && !IsRecordableNavigationUrl(step.Url))
+                throw new MacroExecutionException("unsafe-export",
+                    "Macro URLs with query, fragment, credentials or unsupported schemes cannot be exported as plaintext.");
+            EnsureSafeToExport(step.Steps);
+            EnsureSafeToExport(step.ElseSteps);
+        }
     }
 
     public async Task SaveAsync(string dataRoot, string fileName = "macros.json", CancellationToken cancellationToken = default)
@@ -118,10 +145,11 @@ public sealed class MacroService
     }
     public void Stop() => IsRecording = false;
 
-    public void CaptureNavigation(string url)
+    public bool CaptureNavigation(string url)
     {
-        if (!IsRecording || IsReplaying || string.IsNullOrWhiteSpace(url) || _steps.LastOrDefault()?.Url == url) return;
+        if (!IsRecording || IsReplaying || !IsRecordableNavigationUrl(url) || _steps.LastOrDefault()?.Url == url) return false;
         _steps.Add(new MacroStep { Kind = "navigate", Url = url });
+        return true;
     }
 
     public bool TryCaptureWebMessage(string json)
