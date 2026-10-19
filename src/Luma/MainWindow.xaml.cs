@@ -307,7 +307,7 @@ public sealed partial class MainWindow : Window
 
         RecordMacroButton.Content = "■ Stop";
         SetStatus(safeSource
-            ? "Recording started. Only navigation and approved nonsensitive clicks are captured."
+            ? "Recording started. Safe navigation URLs and your clicks can be captured; input values are disabled."
             : "Recording started, but the initial URL was skipped because it may contain sensitive data.");
         RefreshMacroUi();
     }
