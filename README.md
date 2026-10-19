@@ -129,6 +129,8 @@ The home page is deliberately a **browser workspace**, not a portal homepage.
 
 ---
 
+> **Macro privacy update:** recording skips navigation URLs that contain query strings, fragments or embedded credentials. Plaintext JSON export and local save now refuse input-value steps (including nested steps) and unsafe navigation URLs. Imported macros can still contain private values in memory, and previously saved files are not changed automatically. See [Security](docs/SECURITY.md).
+
 ## Human-first automation
 
 Luma does not treat model output as permission.
