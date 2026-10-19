@@ -21,6 +21,18 @@ if (DelegatePrivacy.PreparePrompt("HTTPS://example.com/path?token=private#secret
     throw new Exception("Uppercase URL token leaked.");
 Console.WriteLine("PASS: delegate prompt redaction and credential refusal");
 
+var router = new LocalIntentRouter();
+foreach (var command in new[] { "매크로 녹화 중지", "녹화 중지", "매크로 녹화 종료", "녹화 멈춰", "stop recording" })
+    if (router.Parse(command).Kind != "stop-recording")
+        throw new Exception("Recording stop command was misclassified: " + command);
+foreach (var command in new[] { "매크로 녹화", "record macro", "record" })
+    if (router.Parse(command).Kind != "record")
+        throw new Exception("Recording start command was misclassified: " + command);
+var preview = new Luma.Models.MacroStep { Kind = "input", Selector = "#example", Value = "private-sensitive-input" }.ToString();
+if (preview.Contains("private-sensitive-input", StringComparison.Ordinal))
+    throw new Exception("Sensitive macro input value leaked into UI preview.");
+Console.WriteLine("PASS: local recording intent precedence and redacted input preview");
+
 var macro = new MacroService();
 macro.ImportJson("[{\"Kind\":\"wait\",\"Selector\":\"#seat\"}]");
 if (macro.Steps.Count != 1 || !macro.ExportJson().Contains("#seat")) throw new Exception("Macro roundtrip failed.");
