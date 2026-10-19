@@ -265,9 +265,9 @@ textarea::placeholder { color: var(--muted); }
   });
 
   const checkedFavoriteUrl = raw => {
-    if (typeof raw !== 'string' || !raw || /[\\\\\u0000-\u001f]/.test(raw)) return null;
+    if (typeof raw !== 'string' || !raw || /[\\\u0000-\u001f]/.test(raw)) return null;
     try {
-      const url = new URL(/^https?:\\/\\//i.test(raw) ? raw : 'https://' + raw);
+      const url = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw);
       if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
       return url.href;
     } catch { return null; }
