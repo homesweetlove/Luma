@@ -185,7 +185,12 @@ public sealed partial class MainWindow : Window
                 if (!args.IsSuccess) SetStatus($"Navigation failed: {args.WebErrorStatus}");
             }
 
-            if (_recordingTab == webView) _macroService.CaptureNavigation(core.Source);
+            if (_recordingTab == webView)
+            {
+                if (!MacroService.IsRecordableNavigationUrl(core.Source))
+                    SetStatus("Recording skipped a URL containing query, fragment, credentials or an unsupported scheme. Review before replay.");
+                else _macroService.CaptureNavigation(core.Source);
+            }
             RefreshMacroUi();
             try { await _auditLog.WriteAsync("browser", "navigate", OriginOf(core.Source)); }
             catch { SetStatus("Page loaded; local audit log could not be written."); }
@@ -292,15 +297,18 @@ public sealed partial class MainWindow : Window
     private void StartRecording()
     {
         if (_automationCancellation is not null || _macroService.IsReplaying) { SetStatus("Stop automation before recording; a dispatched effect may still be finishing."); return; }
-        _recordingTab = ActiveWebView;
+        var view = ActiveWebView;
+        if (view?.CoreWebView2 is null) { SetStatus("Open a ready tab before recording."); return; }
+        _recordingTab = view;
         _macroService.Start(clearExisting: true);
-        if (ActiveWebView?.CoreWebView2?.Source is { Length: > 0 } source)
-        {
-            _macroService.CaptureNavigation(source);
-        }
+        var source = view.CoreWebView2.Source;
+        var safeSource = MacroService.IsRecordableNavigationUrl(source);
+        if (safeSource) _macroService.CaptureNavigation(source);
 
         RecordMacroButton.Content = "■ Stop";
-        SetStatus("Macro recording started. Password/card/OTP values are never recorded.");
+        SetStatus(safeSource
+            ? "Recording started. Only navigation and approved nonsensitive clicks are captured."
+            : "Recording started, but the initial URL was skipped because it may contain sensitive data.");
         RefreshMacroUi();
     }
 
@@ -704,9 +712,12 @@ public sealed partial class MainWindow : Window
 
     private void CancelAutomationButton_Click(object sender, RoutedEventArgs e)
     {
+        var hadPending = _automationCancellation is not null;
         _automationCancellation?.Cancel();
         StopRecording();
-        StopWatch("Automation stopped.");
+        StopWatch(hadPending
+            ? "Cancellation requested. An already dispatched action may still complete; wait for replay to finish."
+            : "Recording and Watch stopped.");
     }
 
     private async Task ReplayOnTabAsync(WebView2 view, CancellationToken token)
@@ -752,7 +763,7 @@ public sealed partial class MainWindow : Window
         if (result == ContentDialogResult.Primary)
         {
             await _macroService.SaveAsync(_dataRoot, "macro.json");
-            SetStatus("Macro saved to %LOCALAPPDATA%\\Luma\\macro.json. It may contain ordinary input data; keep it private.");
+            SetStatus("Macro saved to %LOCALAPPDATA%\\Luma\\macro.json. Only non-input steps and safe navigation URLs are allowed.");
         }
     });
 
