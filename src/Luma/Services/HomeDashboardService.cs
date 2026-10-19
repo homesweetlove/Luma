@@ -266,6 +266,7 @@ textarea::placeholder { color: var(--muted); }
 
   const checkedFavoriteUrl = raw => {
     if (typeof raw !== 'string' || !raw || /[\\\u0000-\u001f]/.test(raw)) return null;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(raw) && !/^https?:\/\//i.test(raw)) return null;
     try {
       const url = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw);
       if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
