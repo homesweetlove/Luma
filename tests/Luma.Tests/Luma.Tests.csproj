@@ -25,6 +25,7 @@
     <Compile Include="../../src/Luma/Services/CredentialManagerStore.cs" Link="Services/CredentialManagerStore.cs" />
     <Compile Include="../../src/Luma/Services/VaultAutofillService.cs" Link="Services/VaultAutofillService.cs" />
     <Compile Include="../../src/Luma/Services/DelegatePrivacy.cs" Link="Services/DelegatePrivacy.cs" />
+    <Compile Include="../../src/Luma/Services/LocalIntentRouter.cs" Link="Services/LocalIntentRouter.cs" />
     <Compile Include="../../src/Luma/Services/WatchSchedule.cs" Link="Services/WatchSchedule.cs" />
     <Compile Include="../AutomationRuntimeTests.cs" Link="AutomationRuntimeTests.cs" />
     <Compile Include="../VaultTests.cs" Link="VaultTests.cs" />
