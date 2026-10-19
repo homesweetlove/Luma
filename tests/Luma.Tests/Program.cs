@@ -42,6 +42,31 @@ foreach (var bad in new[] { "null", "[{\"Kind\":\"shell\"}]", "[{\"Kind\":\"loop
     catch (MacroExecutionException) { }
     if (macro.Steps.Count != 1) throw new Exception("Failed import replaced the existing macro.");
 }
+var navigationRecorder = new MacroService();
+navigationRecorder.Start();
+foreach (var unsafeUrl in new[]
+{
+    "https://example.com/?token=secret", "https://example.com/#recovery",
+    "https://bob:password@example.com/path", "javascript:alert(1)"
+})
+    if (navigationRecorder.CaptureNavigation(unsafeUrl))
+        throw new Exception("Unsafe URL recorded in a macro.");
+if (navigationRecorder.Steps.Count != 0 || !navigationRecorder.CaptureNavigation("https://example.com/public"))
+    throw new Exception("Recording skipped a safe navigation or retained an unsafe URL.");
+navigationRecorder.Stop();
+if (!navigationRecorder.ExportJson().Contains("https://example.com/public"))
+    throw new Exception("Safe navigation could not be exported.");
+navigationRecorder.ReplaceSteps([new Luma.Models.MacroStep { Kind = "input", Selector = "#query", Value = "hello" }]);
+try { navigationRecorder.ExportJson(); throw new Exception("Plaintext macro input exported."); }
+catch (MacroExecutionException ex) when (ex.Code == "unsafe-export") { }
+navigationRecorder.ReplaceSteps([new Luma.Models.MacroStep { Kind = "navigate", Url = "https://example.com/?session=hidden" }]);
+try { navigationRecorder.ExportJson(); throw new Exception("Plaintext token-bearing URL exported."); }
+catch (MacroExecutionException ex) when (ex.Code == "unsafe-export") { }
+navigationRecorder.ReplaceSteps([new Luma.Models.MacroStep { Kind = "loop", Steps = [new() { Kind = "input", Selector = "#query", Value = "nested" }] }]);
+try { navigationRecorder.ExportJson(); throw new Exception("Nested input exported."); }
+catch (MacroExecutionException ex) when (ex.Code == "unsafe-export") { }
+Console.WriteLine("PASS: recording skips token URLs; plaintext export refuses input values and nested/unsafe steps");
+
 macro.Start();
 if (macro.TryCaptureWebMessage("{\"source\":\"luma-macro\",\"kind\":\"input\",\"selector\":\"#unknown\",\"value\":\"secret\"}"))
     throw new Exception("Unapproved page input was recorded.");
