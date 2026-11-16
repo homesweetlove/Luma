@@ -23,6 +23,9 @@
 
 ---
 
+> [!NOTE]
+> **개발 프리뷰 — 현재는 소스코드 공개용입니다.** 서명된 Windows 설치 파일이나 정식 릴리스는 아직 없습니다. 아래 안내대로 Windows x64에서 직접 빌드할 수 있으며, 실사용 계정의 Vault·자동화 기능은 민감하지 않은 테스트 데이터로 먼저 확인해 주세요. 실제 기기 호환성과 8GB 환경 성능은 검증 중입니다.
+
 ## 브라우저가 먼저다
 
 Luma는 AI 채팅 페이지에 브라우저 모양을 씌운 프로젝트가 아니다. **WinUI 3 + WebView2 기반 실제 개인용 브라우저** 위에 필요한 자동화만 얹는 방향이다.
@@ -298,6 +301,7 @@ dotnet restore tests/Luma.Tests/Luma.Tests.csproj -p:Platform=x64 --locked-mode
 dotnet build tests/Luma.Tests/Luma.Tests.csproj -c Release -p:Platform=x64 --no-restore
 dotnet tests/Luma.Tests/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/Luma.Tests.dll
 node tests/ForegroundWatchTests.js
+node tests/HomeDashboardTests.js
 ```
 
 ---
