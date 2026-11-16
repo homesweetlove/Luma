@@ -23,6 +23,9 @@
 
 ---
 
+> [!NOTE]
+> **Development preview — source code only.** No signed Windows installer or stable release is available yet. Build on Windows x64 using the steps below, and test with non-sensitive data before using local automation or the Vault on real accounts. Actual-device compatibility and 8 GB performance are still being verified.
+
 ## A browser first
 
 Luma is not an AI chat page pretending to be a browser. It is a WinUI 3 + WebView2 browser for personal Windows use, with bounded local automation layered on top.
@@ -280,6 +283,7 @@ dotnet restore tests/Luma.Tests/Luma.Tests.csproj -p:Platform=x64 --locked-mode
 dotnet build tests/Luma.Tests/Luma.Tests.csproj -c Release -p:Platform=x64 --no-restore
 dotnet tests/Luma.Tests/bin/x64/Release/net8.0-windows10.0.19041.0/win-x64/Luma.Tests.dll
 node tests/ForegroundWatchTests.js
+node tests/HomeDashboardTests.js
 ```
 
 ---
