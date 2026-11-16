@@ -252,7 +252,8 @@ textarea::placeholder { color: var(--muted); }
     $('time').textContent = new Intl.DateTimeFormat(undefined,{hour:'2-digit',minute:'2-digit'}).format(now);
     $('date').textContent = new Intl.DateTimeFormat(undefined,{weekday:'long',month:'long',day:'numeric'}).format(now);
   }
-  tick(); setInterval(tick, 1000);
+  tick(); setInterval(tick, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
 
   $('searchForm').addEventListener('submit', e => {
     e.preventDefault();
@@ -263,9 +264,26 @@ textarea::placeholder { color: var(--muted); }
     else location.href = 'https://www.google.com/search?q=' + encodeURIComponent(q);
   });
 
+  const checkedFavoriteUrl = raw => {
+    if (typeof raw !== 'string' || !raw || /[\\\u0000-\u001f]/.test(raw)) return null;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(raw) && !/^https?:\/\//i.test(raw)) return null;
+    try {
+      const url = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw);
+      if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) return null;
+      return url.href;
+    } catch { return null; }
+  };
   function loadFavorites() {
-    try { return JSON.parse(localStorage.getItem('luma.home.favorites.v1')) || DEFAULT_FAVORITES; }
-    catch { return DEFAULT_FAVORITES; }
+    try {
+      const stored = JSON.parse(localStorage.getItem('luma.home.favorites.v1'));
+      const items = Array.isArray(stored) ? stored : DEFAULT_FAVORITES;
+      return items.slice(0,12).flatMap(item => {
+        const url = checkedFavoriteUrl(item?.url);
+        return url && typeof item?.name === 'string'
+          ? [{ name: item.name.trim().slice(0,40), url }]
+          : [];
+      });
+    } catch { return DEFAULT_FAVORITES; }
   }
   function saveFavorites(items) { localStorage.setItem('luma.home.favorites.v1', JSON.stringify(items.slice(0,12))); }
   function renderFavorites() {
@@ -279,13 +297,11 @@ textarea::placeholder { color: var(--muted); }
   }
   renderFavorites();
   $('addFavorite').addEventListener('click', () => {
-    const name = prompt('Favorite name'); if (!name) return;
+    const name = prompt('Favorite name'); if (!name || !name.trim()) return;
     const raw = prompt('HTTPS or HTTP address'); if (!raw) return;
-    try {
-      const url = new URL(/^https?:\/\//i.test(raw) ? raw : 'https://' + raw);
-      if (!['http:','https:'].includes(url.protocol)) throw new Error();
-      const items = loadFavorites(); items.push({name:name.trim().slice(0,40),url:url.href}); saveFavorites(items); renderFavorites();
-    } catch { alert('Enter a valid HTTP(S) address.'); }
+    const url = checkedFavoriteUrl(raw);
+    if (!url) { alert('Enter an HTTP(S) address without embedded credentials.'); return; }
+    const items = loadFavorites(); items.push({name:name.trim().slice(0,40),url}); saveFavorites(items); renderFavorites();
   });
 
   const note = $('note'); note.value = localStorage.getItem('luma.home.note.v1') || '';

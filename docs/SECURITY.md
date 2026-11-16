@@ -22,7 +22,7 @@ Microsoft 지침처럼 origin과 메시지를 검사하고 임의 네이티브 �
 | Typed login/address/payment metadata | DPAPI CurrentUser records in `Vault/Typed-v1` | Windows-account boundary, not a separate master-password/Hello lock |
 | Login password | DPAPI record or optional Windows Credential Manager | Resolved only for the local fill path; not a display/list-model property |
 | Payment metadata | Brand, last four, holder, expiry only | No PAN, security code, PIN, or arbitrary payment-field bag |
-| Macro JSON | Explicit local export | Plaintext; can contain ordinary input data and sensitive URLs |
+| Macro JSON | Explicit local export with safety checks | Plaintext; export/save rejects input-value steps and navigation URLs with query, fragment or embedded credentials. Other paths/selectors can still be sensitive |
 | Audit DB | SQLite `luma.db` | Not encrypted; origins and action metadata can identify browsing behavior |
 | Delegate prompt | Native review, explicit clipboard copy | External provider/clipboard privacy applies after user disclosure |
 
@@ -90,7 +90,7 @@ The composer helper exists but Main does not automatically invoke it; it does no
 
 ## Audit, tests, and remaining limits / 감사·검증·한계
 
-Current audit call sites record origins, provider names, action outcomes, and counts rather than passwords, full card numbers, cookies, or full task/reply bodies. The SQLite database is not a complete approval ledger or a security-monitoring product. Plaintext macro URLs and browser profile history may contain sensitive data even when audit targets are reduced to origins.
+Current audit call sites record origins, provider names, action outcomes, and counts rather than passwords, full card numbers, cookies, or full task/reply bodies. The SQLite database is not a complete approval ledger or a security-monitoring product. Macro recording skips URL queries/fragments/userinfo, while export/save denies input values and unsafe navigation URLs. Previously saved files, URL path segments, selectors and WebView2 profile history may still contain sensitive data even when audit targets are reduced to origins.
 
 The integration run reports a zero-warning Release build and passing console suites. The final tests include 15 macro-runtime scenarios, 17 generated vault JavaScript cases, and 35 watch production-script cases. Generated vault scripts are emitted by VaultTests when `LUMA_VAULT_TEST_SCRIPT_DIRECTORY` is set; Node 22 runs the script regressions. See [README verification](../README.md#verification).
 

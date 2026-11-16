@@ -14,14 +14,18 @@ public sealed class LocalIntentRouter
             return new AgentIntent("snapshot");
         }
 
+        // Stop commands must win before the generic "macro recording" start command.
+        // Otherwise "매크로 녹화 중지" incorrectly starts recording.
+        if (lower.Contains("녹화 중지") || lower.Contains("녹화 끝") ||
+            lower.Contains("녹화 종료") || lower.Contains("녹화 멈춰") ||
+            lower.Contains("stop recording"))
+        {
+            return new AgentIntent("stop-recording");
+        }
+
         if ((lower.Contains("매크로") && lower.Contains("녹화")) || lower.Contains("record macro") || lower == "record")
         {
             return new AgentIntent("record");
-        }
-
-        if (lower.Contains("녹화 끝") || lower.Contains("녹화 중지") || lower.Contains("stop recording"))
-        {
-            return new AgentIntent("stop-recording");
         }
 
         if ((lower.Contains("매크로") && lower.Contains("재생")) || lower.Contains("replay macro") || lower == "replay")

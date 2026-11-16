@@ -45,6 +45,19 @@ Luma
 
 ---
 
+## Engineering case study
+
+Luma is an experiment in **bounded browser automation under resource and trust constraints**, rather than an autonomous assistant claiming to complete every workflow.
+
+- **Problem:** how can untrusted webpages and external AI suggestions be observed without giving them native execution authority?
+- **Decision:** execute validated macro steps only in the selected, OS-foreground tab; recheck document identity after click approval, and never blindly retry an effect after dispatch.
+- **Trade-off:** this design favors user control and failure containment over unattended operation. No Codex/MCP remote-control server or autonomous mail/reservation integration is currently provided.
+- **Validation boundary:** the repository contains a Windows CI workflow and behavioral/DOM test suites, but browser performance on the 8 GB target and broad real-site compatibility are not published benchmarks.
+
+**[Read the engineering case study](docs/ENGINEERING_CASE_STUDY.md)** · [한국어](docs/ENGINEERING_CASE_STUDY.ko.md) · [Security and limitations](docs/SECURITY.md)
+
+---
+
 ## 🫧 Glass Home
 
 New tabs now open a local Luma dashboard instead of a plain Google page.
@@ -115,6 +128,8 @@ The home page is deliberately a **browser workspace**, not a portal homepage.
 </table>
 
 ---
+
+> **Macro privacy update:** recording skips navigation URLs that contain query strings, fragments or embedded credentials. Plaintext JSON export and local save now refuse input-value steps (including nested steps) and unsafe navigation URLs. Imported macros can still contain private values in memory, and previously saved files are not changed automatically. See [Security](docs/SECURITY.md).
 
 ## Human-first automation
 

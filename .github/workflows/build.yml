@@ -48,5 +48,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/VaultAutofillTests.js $env:LUMA_VAULT_TEST_SCRIPT_DIRECTORY
 
-      - name: Watch DOM script regressions
-        run: node tests/ForegroundWatchTests.js
+      - name: Browser DOM and Home script regressions
+        run: |
+          node tests/ForegroundWatchTests.js
+          node tests/HomeDashboardTests.js

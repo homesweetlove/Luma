@@ -51,7 +51,7 @@ public sealed class MacroStep
         {
             "navigate" => $"Navigate → {Url}",
             "click" => $"Click → {Selector}",
-            "input" => $"Input → {Selector} = {Value}",
+            "input" => $"Input → {Selector} (value hidden)",
             _ => Kind
         };
     }
