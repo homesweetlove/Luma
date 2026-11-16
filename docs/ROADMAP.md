@@ -46,7 +46,7 @@ Complete Gemini/Claude account flows, real reservation sites, long-running focus
 
 ## Priority 2: improve local workflow clarity / 우선순위 2: 로컬 작업 사용성
 
-- [ ] Named macro library, explicit load/save locations, and a visual nested-step editor with the same validation/budgets.
+- [x] Named local macro library under `%LOCALAPPDATA%\Luma\Macros` (plaintext-safe export), visual nested-step editor with detached apply/discard, and explicit load/save.
 - [ ] A clear explanation of click/navigation-only recording; any input recording must use an explicit host-approved nonsensitive allowlist.
 - [ ] Better watch/approval outcome messages, including declined or rejected clicks, without implying that Auto-click removes consent.
 - [ ] Durable selector diagnostics and fixtures; snapshot references are not a stable registry today.
@@ -54,19 +54,19 @@ Complete Gemini/Claude account flows, real reservation sites, long-running focus
 - [ ] Legacy vault migration: inspect retained untyped `Vault/*.bin`, obtain user-directed mapping to typed slots, and preserve the ban on PAN/security-code storage. No migration or deletion is implemented today.
 - [ ] Optional Windows Hello/user-presence consent for vault access after compatibility testing.
 
-현재 매크로는 세션 단위입니다. 이름별 라이브러리, 시각적 편집기, 명시적 load/save, 정확한 상태 안내와 데이터 보존 설정은 향후 작업입니다. 이전 `Vault/*.bin`은 유지되며 자동 변환/삭제가 없습니다. 마이그레이션에서도 카드번호/보안 코드 저장 금지는 유지합니다.
+세션 매크로 외에 이름별 로컬 라이브러리와 중첩 단계 시각적 편집기를 제공합니다. 평문 저장 금지 조건은 동일하며, 이전 `Vault/*.bin`의 자동 변환/삭제와 명시적 데이터 보존 설정은 아직 없습니다. 마이그레이션에서도 카드번호/보안 코드 저장 금지는 유지합니다.
 
 ## Priority 3: optional intelligence / 우선순위 3: 선택적 AI
 
 - [ ] Explicitly configured API/local-model adapters behind `IAiProvider`, with account/cost and data-sharing controls.
-- [ ] A bounded planner that proposes reviewable steps rather than silently executing external text.
+- [x] Manual Gemini/Claude JSON plan handoff, structural/privacy validation, explicit review and load. No automatic inference, provider API or replay.
 - [ ] Selector repair through the existing explicit opt-in self-heal callback, with document/target validation and fresh approval.
 - [ ] A reviewed context-sharing builder; current delegates receive only the user-authored task.
 - [ ] Broader privacy test cases for user-authored prompts without claiming comprehensive secret detection.
 
 Keep deterministic DOM rules and macros as the default. No always-on model is required or planned as a prerequisite. There is no automatic free/paid model router today.
 
-모델은 명시적으로 설정하는 선택 기능으로 검토합니다. 현재는 자동 라우터·계획기·selector 복구 모델·페이지 문맥 공유기가 없습니다. 결정적 DOM/매크로를 기본으로 유지하고 상주 모델을 필수로 삼지 않습니다.
+모델 API는 아직 연결되지 않았지만, 보이는 Gemini/Claude 수동 계획 요청과 JSON 검토·불러오기 흐름은 제공합니다. 자동 라우터·selector 복구 모델·페이지 문맥 공유기는 없습니다. 결정적 DOM/매크로를 기본으로 유지하고 상주 모델을 필수로 삼지 않습니다.
 
 ## Priority 4: separately scoped tools / 우선순위 4: 별도 도구 확장
 

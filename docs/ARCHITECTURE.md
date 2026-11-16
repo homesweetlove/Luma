@@ -63,9 +63,9 @@ Import is a pasted JSON array. Property names are case-insensitive; kinds and co
 
 Plaintext export/save deliberately refuses macros with input values or non-recordable navigation URLs, including nested steps. The application does not rewrite old exported files. A URL path or selector may still contain identifying information, so manual review remains necessary.
 
-The import text editor limits input to **131,072 characters**; the service separately limits JSON import/export to **1 MiB UTF-8**. Export shows the JSON, then saves only on **Save locally**. Main calls `SaveAsync(_dataRoot, "macro.json")`, using a temporary file and replacement in the same directory. General service helpers default to `macros.json`; this is not the UI filename. There is no automatic startup load, named library, or SQLite macro persistence.
+The import text editor limits input to **131,072 characters**; the service separately limits JSON import/export to **1 MiB UTF-8**. Export shows the JSON, then saves only on **Save locally**. Main calls `SaveAsync(_dataRoot, "macro.json")`, using a temporary file and replacement in the same directory. General service helpers default to `macros.json`; this is not the UI filename. `MacroLibraryService` now offers user-named, local-only presets in `%LOCALAPPDATA%\Luma\Macros` with hashed filenames, atomic replacement and the same safe plaintext export validation. `MacroEditorSession` makes detached nested-step working copies: only the explicit Apply action replaces the active macro after validation. There is no automatic startup load or SQLite macro persistence.
 
-현재 화면에서는 안전 검사를 통과한 URL 이동과 클릭만 녹화합니다. 값이 있는 입력 단계와 쿼리·프래그먼트 등이 포함된 URL은 평문 내보내기 및 저장에서 거부됩니다. 입력 녹화에는 Main이 제공하지 않는 명시적 허용 검증기가 필요합니다. JSON 가져오기는 전체 검증 후 교체하며 실패 시 기존 매크로를 유지합니다. 편집창 제한은 131,072자, 서비스 제한은 UTF-8 1 MiB입니다. 내보내기는 사용자의 저장 선택 후 `macro.json`을 원자적으로 교체하며 자동 시작 로드는 없습니다.
+현재 화면에서는 안전 검사를 통과한 URL 이동과 클릭만 녹화합니다. 값이 있는 입력 단계와 쿼리·프래그먼트 등이 포함된 URL은 평문 내보내기 및 저장에서 거부됩니다. 입력 녹화에는 Main이 제공하지 않는 명시적 허용 검증기가 필요합니다. JSON 가져오기는 전체 검증 후 교체하며 실패 시 기존 매크로를 유지합니다. 편집창 제한은 131,072자, 서비스 제한은 UTF-8 1 MiB입니다. 내보내기는 사용자의 저장 선택 후 `macro.json`을 원자적으로 교체합니다. 이름별 매크로는 로컬 `Macros` 폴더에만 저장하며 시각적 편집기는 적용 전 임시 복사본을 사용합니다. 자동 시작 로드는 없습니다.
 
 ### Step semantics / 단계 의미
 

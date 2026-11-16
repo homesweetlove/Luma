@@ -134,6 +134,14 @@ The home page is deliberately a **browser workspace**, not a portal homepage.
 
 > **Macro privacy update:** recording skips navigation URLs that contain query strings, fragments or embedded credentials. Plaintext JSON export and local save now refuse input-value steps (including nested steps) and unsafe navigation URLs. Imported macros can still contain private values in memory, and previously saved files are not changed automatically. See [Security](docs/SECURITY.md).
 
+## Saved macros, visual editor and AI planning
+
+- **Saved macros:** Open **Saved macros** in the Agent panel to name and save the current validated program or load an existing one from `%LOCALAPPDATA%\Luma\Macros`. They are local plaintext presets, not cloud-synced or encrypted; input values and unsafe navigation URLs cannot be saved.
+- **Visual editor:** Open **Visual editor** to add, reorder or remove steps, edit selectors/conditions/timeouts, and create nested `if`/`else`, `loop` and `retry` blocks. Changes stay in a separate working copy until **Apply macro** validates the entire program. Discard leaves the active macro unchanged.
+- **AI macro plan:** Describe an action in **AI MACRO PLAN**, choose Gemini or Claude, review the sanitized prompt and manually send it in the visible provider tab. Select only its JSON response, click **Review selected AI plan**, inspect the validated steps, and explicitly **Load for editing**. **Replay is a separate action**; clicks still require native approval.
+
+This is a visible, user-reviewed AI handoff, **not** automatic model/API integration or unsupervised browsing. AI plans reject input steps, credential-bearing URLs, unsupported actions and self-healing. Unknown CSS selectors must be corrected in the editor before replay. The source-only preview has no signed Windows installer yet.
+
 ## Human-first automation
 
 Luma does not treat model output as permission.

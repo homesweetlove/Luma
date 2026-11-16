@@ -20,6 +20,9 @@
     <Compile Include="../../src/Luma/Models/*.cs" Link="Models/%(Filename)%(Extension)" />
     <Compile Include="../../src/Luma/Services/MacroRuntime.cs" Link="Services/MacroRuntime.cs" />
     <Compile Include="../../src/Luma/Services/MacroService.cs" Link="Services/MacroService.cs" />
+    <Compile Include="../../src/Luma/Services/MacroLibraryService.cs" Link="Services/MacroLibraryService.cs" />
+    <Compile Include="../../src/Luma/Services/MacroEditorSession.cs" Link="Services/MacroEditorSession.cs" />
+    <Compile Include="../../src/Luma/Services/AiMacroPlanner.cs" Link="Services/AiMacroPlanner.cs" />
     <Compile Include="../../src/Luma/Services/ForegroundWatchService.cs" Link="Services/ForegroundWatchService.cs" />
     <Compile Include="../../src/Luma/Services/SecureVaultService.cs" Link="Services/SecureVaultService.cs" />
     <Compile Include="../../src/Luma/Services/CredentialManagerStore.cs" Link="Services/CredentialManagerStore.cs" />

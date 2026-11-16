@@ -144,10 +144,89 @@
                                 <Button x:Name="ExportMacroButton" Grid.Column="1" Content="Export" Click="ExportMacroButton_Click"
                                         Style="{StaticResource LumaToolButtonStyle}" HorizontalAlignment="Stretch" />
                             </Grid>
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Content="Saved macros" Click="MacroLibraryButton_Click"
+                                        Style="{StaticResource LumaToolButtonStyle}" HorizontalAlignment="Stretch" />
+                                <Button Content="Visual editor" Grid.Column="1" Click="OpenMacroEditorButton_Click"
+                                        Style="{StaticResource LumaToolButtonStyle}" HorizontalAlignment="Stretch" />
+                            </Grid>
                             <TextBlock x:Name="MacroSummaryText" Text="No macro recorded" FontSize="12" TextWrapping="Wrap"
                                        Foreground="{ThemeResource LumaSecondaryTextBrush}" />
                             <ListView x:Name="MacroStepsList" MaxHeight="160" SelectionMode="None"
                                       ScrollViewer.VerticalScrollBarVisibility="Auto" AutomationProperties.Name="Recorded macro steps" />
+                            <Expander x:Name="MacroEditorExpander" Header="Visual step editor" IsExpanded="False">
+                                <StackPanel Spacing="8" Padding="0,8,0,8">
+                                    <TextBlock Text="Edit a working copy. Apply validates the whole program before replacing the current macro."
+                                               TextWrapping="Wrap" FontSize="12" />
+                                    <ListView x:Name="EditorStepsList" MaxHeight="190" MinHeight="100"
+                                              SelectionChanged="EditorStepsList_SelectionChanged"
+                                              AutomationProperties.Name="Nested macro steps" />
+                                    <Grid ColumnSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Content="+ Root" Click="EditorAddRoot_Click" HorizontalAlignment="Stretch" />
+                                        <Button Grid.Column="1" Content="+ Child" Click="EditorAddChild_Click" HorizontalAlignment="Stretch" />
+                                        <Button Grid.Column="2" Content="+ Else" Click="EditorAddElse_Click" HorizontalAlignment="Stretch" />
+                                    </Grid>
+                                    <Grid ColumnSpacing="6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Content="↑ Up" Click="EditorMoveUp_Click" HorizontalAlignment="Stretch" />
+                                        <Button Grid.Column="1" Content="↓ Down" Click="EditorMoveDown_Click" HorizontalAlignment="Stretch" />
+                                        <Button Grid.Column="2" Content="Remove" Click="EditorRemove_Click" HorizontalAlignment="Stretch" />
+                                    </Grid>
+                                    <ComboBox x:Name="EditorKindBox" Header="Selected step type" HorizontalAlignment="Stretch">
+                                        <ComboBoxItem Content="navigate" /><ComboBoxItem Content="click" />
+                                        <ComboBoxItem Content="input" /><ComboBoxItem Content="wait" />
+                                        <ComboBoxItem Content="retry" /><ComboBoxItem Content="if" />
+                                        <ComboBoxItem Content="loop" />
+                                    </ComboBox>
+                                    <TextBox x:Name="EditorSelectorBox" Header="CSS selector (click / input / wait / if)" />
+                                    <TextBox x:Name="EditorUrlBox" Header="URL (navigate)" />
+                                    <PasswordBox x:Name="EditorValueBox" Header="Input value (session only · not saved in library)" />
+                                    <ComboBox x:Name="EditorConditionBox" Header="Condition (wait / if)" HorizontalAlignment="Stretch">
+                                        <ComboBoxItem Content="ready" /><ComboBoxItem Content="exists" />
+                                        <ComboBoxItem Content="absent" /><ComboBoxItem Content="visible" />
+                                        <ComboBoxItem Content="enabled" />
+                                    </ComboBox>
+                                    <NumberBox x:Name="EditorLoopBox" Header="Loop count" Minimum="1" Maximum="100" Value="1" />
+                                    <NumberBox x:Name="EditorRetryBox" Header="Retry attempts" Minimum="0" Maximum="10" Value="0" />
+                                    <NumberBox x:Name="EditorTimeoutBox" Header="Timeout (ms)" Minimum="1" Maximum="30000" Value="5000" />
+                                    <TextBlock x:Name="EditorMessageText" Text="Choose a step to edit. Input values cannot be saved as plaintext."
+                                               TextWrapping="Wrap" FontSize="12" />
+                                    <Button Content="Update selected step" Click="EditorUpdate_Click" HorizontalAlignment="Stretch" />
+                                    <Grid ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                        <Button Content="Discard" Click="EditorDiscard_Click" HorizontalAlignment="Stretch" />
+                                        <Button Grid.Column="1" Content="Apply macro" Click="EditorApply_Click"
+                                                HorizontalAlignment="Stretch" Style="{StaticResource LumaToolButtonStyle}" />
+                                    </Grid>
+                                </StackPanel>
+                            </Expander>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="AI MACRO PLAN" Style="{StaticResource LumaSectionHeaderStyle}" />
+                            <TextBlock Text="Ask Claude or Gemini for a JSON plan. Select its reply, review, then load it; nothing runs automatically."
+                                       TextWrapping="Wrap" FontSize="12" />
+                            <TextBox x:Name="AiPlanTaskBox" Header="Describe the steps to automate" MaxLength="2000"
+                                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="78"
+                                     PlaceholderText="Example: open example.com, wait for #ready, then click #continue" />
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Button Content="Plan with Gemini" Click="PlanGemini_Click"
+                                        HorizontalAlignment="Stretch" Style="{StaticResource LumaToolButtonStyle}" />
+                                <Button Grid.Column="1" Content="Plan with Claude" Click="PlanClaude_Click"
+                                        HorizontalAlignment="Stretch" Style="{StaticResource LumaToolButtonStyle}" />
+                            </Grid>
+                            <Button Content="Review selected AI plan" Click="ReviewAiPlan_Click"
+                                    HorizontalAlignment="Stretch" Style="{StaticResource LumaToolButtonStyle}" />
                         </StackPanel>
 
                         <StackPanel Spacing="8">

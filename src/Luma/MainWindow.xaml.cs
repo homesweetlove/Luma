@@ -25,6 +25,7 @@ public sealed partial class MainWindow : Window
     private readonly string _dataRoot;
     private readonly AuditLogService _auditLog;
     private readonly SecureVaultService _vault;
+    private readonly MacroLibraryService _macroLibrary;
     private CoreWebView2Environment? _webEnvironment;
     private bool _windowActive = true;
     private bool _watchTickRunning;
@@ -58,6 +59,7 @@ public sealed partial class MainWindow : Window
 
         _auditLog = new AuditLogService(_dataRoot);
         _vault = new SecureVaultService(_dataRoot);
+        _macroLibrary = new MacroLibraryService(_dataRoot);
 
         _watchTimer.Interval = TimeSpan.FromSeconds(3);
         _watchTimer.Tick += WatchTimer_Tick;
@@ -299,6 +301,7 @@ public sealed partial class MainWindow : Window
         if (_automationCancellation is not null || _macroService.IsReplaying) { SetStatus("Stop automation before recording; a dispatched effect may still be finishing."); return; }
         var view = ActiveWebView;
         if (view?.CoreWebView2 is null) { SetStatus("Open a ready tab before recording."); return; }
+        DiscardMacroEditor();
         _recordingTab = view;
         _macroService.Start(clearExisting: true);
         var source = view.CoreWebView2.Source;
@@ -746,6 +749,7 @@ public sealed partial class MainWindow : Window
         if (choice != ContentDialogResult.Primary) return;
         StopRecording();
         _macroService.ImportJson(box.Text);
+        DiscardMacroEditor();
         RefreshMacroUi();
         SetStatus("Macro imported and validated. Replay stays on the selected foreground tab.");
     });

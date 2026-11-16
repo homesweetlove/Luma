@@ -23,6 +23,7 @@ Microsoft 지침처럼 origin과 메시지를 검사하고 임의 네이티브 �
 | Login password | DPAPI record or optional Windows Credential Manager | Resolved only for the local fill path; not a display/list-model property |
 | Payment metadata | Brand, last four, holder, expiry only | No PAN, security code, PIN, or arbitrary payment-field bag |
 | Macro JSON | Explicit local export with safety checks | Plaintext; export/save rejects input-value steps and navigation URLs with query, fragment or embedded credentials. Other paths/selectors can still be sensitive |
+| Named macro library | `%LOCALAPPDATA%\Luma\Macros` with hashed filenames and atomic writes | Also plaintext; same input/URL export refusal, no cloud sync or separate encryption. Macro names and selectors may reveal activity |
 | Audit DB | SQLite `luma.db` | Not encrypted; origins and action metadata can identify browsing behavior |
 | Delegate prompt | Native review, explicit clipboard copy | External provider/clipboard privacy applies after user disclosure |
 
@@ -82,7 +83,7 @@ Prompt preparation limits tasks to 8,000 characters and rejects recognizable cre
 
 Only the explicit Copy task choice writes the reviewed prompt to the clipboard. Clipboard history, sync, and other apps may retain it. Luma does not automatically clear the clipboard or control provider retention.
 
-Read selected reply imports at most 16,000 selected characters from the last opened delegate's selected foreground tab at its exact origin. It does not verify authorship or that the selection is an assistant reply. It displays untrusted text without executing tools, altering macros, or transferring approval.
+Read selected reply imports at most 16,000 selected characters from the last opened delegate's selected foreground tab at its exact origin. It does not verify authorship or that the selection is an assistant reply. Generic reply review displays untrusted text without executing tools or transferring approval. The separate AI MACRO PLAN flow accepts only a selected JSON array, validates it with MacroService, refuses input steps, unsafe URLs and self-heal, then requires an explicit Load-for-editing confirmation before replacing the current macro. This never triggers replay: every click still requires its own native approval.
 
 The composer helper exists but Main does not automatically invoke it; it does not send a message. Provider APIs/local models are not implemented. The interface alone does not authorize sharing context.
 
