@@ -335,3 +335,7 @@ node tests/HomeDashboardTests.js
 **Browse · Automate · Delegate · Stay in control**
 
 </div>
+
+## 라이선스
+
+직접 작성한 소스 코드는 [MIT 라이선스](LICENSE)로 공개합니다. 타사 라이브러리와 의존성에는 각각의 라이선스가 적용됩니다.

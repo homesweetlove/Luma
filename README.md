@@ -311,3 +311,7 @@ That is intentional: new capability should be added **behind the existing safety
 **Browse · Automate · Delegate · Stay in control**
 
 </div>
+
+## License
+
+Project-authored source code is licensed under the [MIT License](LICENSE). Third-party dependencies retain their own license terms.
